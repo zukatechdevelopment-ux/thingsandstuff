@@ -94,11 +94,11 @@ end
 
 -- Create all the addon buttons using the migrated helper function
 print("[ZukaHub -> Mercury] Populating Commands tab...")
-safeButton("Aimbot", "https://raw.githubusercontent.com/scriptlisenbe-stack/luaprojectse3/refs/heads/main/trashaimbot.lua", "Aimbot Started")
+safeButton("pAimbot", "https://raw.githubusercontent.com/zukatechdevelopment-ux/thingsandstuff/refs/heads/main/ZukasAimbot.lua", "Aimbot Started")
 safeButton("Fly GUI", "https://raw.githubusercontent.com/396abc/Script/refs/heads/main/FlyR15.lua", "Fly GUI Started")
 safeButton("Zukas Admin", "https://raw.githubusercontent.com/zukatechdevelopment-ux/thingsandstuff/refs/heads/main/Admin.lua", "Admin Activated")
 safeButton("Dex++", "https://raw.githubusercontent.com/scriptlisenbe-stack/luaprojectse3/refs/heads/main/CustomDex.lua", "Dex Loaded")
-safeButton("Zenith Hub +", "https://raw.githubusercontent.com/Zenith-Devs/Zenith-Hub/main/loader", "UI Activated")
+safeButton("Player Farmer", "https://raw.githubusercontent.com/zukatechdevelopment-ux/thingsandstuff/refs/heads/main/ragebot.lua", "UI Activated")
 safeButton("Wall-Walking", "https://raw.githubusercontent.com/ltseverydayyou/uuuuuuu/main/WallWalk.lua", "Swag Started")
 safeButton("Script-Blox API", "https://raw.githubusercontent.com/ltseverydayyou/Nameless-Admin/main/ScriptHubNA.lua", "Server Searcher Loaded")
 safeButton("Universe Explorer", "https://raw.githubusercontent.com/ltseverydayyou/uuuuuuu/main/Universe%20Viewer", "Explorer Loaded")
@@ -106,7 +106,7 @@ safeButton("Server Hopper", "https://raw.githubusercontent.com/Pnsdgsa/Script-ki
 safeButton("Fling GUI", "https://raw.githubusercontent.com/miso517/scirpt/refs/heads/main/main.lua", "Fling GUI Loaded")
 safeButton("Blox Fruits", "https://rawscripts.net/raw/Arise-Crossover-Speed-Hub-X-33730", "Blox Fruits")
 safeButton("Copy Console", "https://raw.githubusercontent.com/scriptlisenbe-stack/luaprojectse3/refs/heads/main/consolecopy.lua", "Loaded")
-safeButton("Player Attach + Follower", "https://raw.githubusercontent.com/zukatech1/customluascripts/refs/heads/main/flingaddon.lua", "Follower GUI Loaded")
+safeButton("Internal Executor", "https://raw.githubusercontent.com/InfernusScripts/VSCode/refs/heads/main/VSCode.lua", "GUI Loaded")
 safeButton("Reach Modifier", "https://raw.githubusercontent.com/zukatechdevelopment-ux/luaprojectse3/refs/heads/main/Tool%20Modifier.lua", "Gui Loaded")
 safeButton("Working Chat Bypass", "https://raw.githubusercontent.com/shadow62x/catbypass/main/upfix", "Bypass Activated")
 safeButton("Ketamine/Spy", "https://raw.githubusercontent.com/InfernusScripts/Ketamine/refs/heads/main/Ketamine.lua", "Cherry Activated")
@@ -114,6 +114,7 @@ safeButton("ZukaBot AI V1", "https://raw.githubusercontent.com/zukatech1/customl
 safeButton("ZukaBot AI V2", "https://raw.githubusercontent.com/theogcheater2020-pixel/luaprojects2/refs/heads/main/chat.lua", "Bot v2 Loaded")
 safeButton("Zombie Game Upd3", "https://raw.githubusercontent.com/osukfcdays/zlfucker/refs/heads/main/.luau", "Zombie GUI Started")
 safeButton("Zombie Attack Auto", "https://raw.githubusercontent.com/evelynnscripts/Evelynn-Hub/refs/heads/main/zombie-attack.lua", "Hub Loaded")
+safeButton("Pentesting Remotes", "https://raw.githubusercontent.com/scriptlisenbe-stack/luaprojectse3/refs/heads/main/RemoteEvent_Pentester_OP.txt", "Sigma Loaded")
 
 -- ============================================================================
 -- === UTILITIES TAB ===
@@ -154,5 +155,6 @@ SettingsSection:button({
         print("Zuka Hub (Mercury) unloaded and cleaned up.")
     end
 })
+
 
 print("We're so back.")
