@@ -1115,13 +1115,13 @@ local function loadstringCmd(url, notif) pcall(function() loadstring(game:HttpGe
 RegisterCommand({Name = "zui", Aliases = {}, Description = "Loads the Zombie Hub"}, function() loadstringCmd("https://raw.githubusercontent.com/scriptlisenbe-stack/luaprojectse3/refs/heads/main/ZGUI.txt", "Loading Zombie Hub...") end)
 RegisterCommand({Name = "zukahub", Aliases = {}, Description = "Loads the Zuka Hub"}, function() loadstringCmd("https://raw.githubusercontent.com/zukatechdevelopment-ux/thingsandstuff/refs/heads/main/Loader.lua", "Loading Zuka's Hub...") end)
 RegisterCommand({Name = "zuka", Aliases = {}, Description = "Loads Zuka's personal executor/admin panel."}, function() loadstringCmd("https://raw.githubusercontent.com/bloxtech1/luaprojects2/refs/heads/main/ZukasFunBox.lua", "Loading Zuka's Gui...") end)
-RegisterCommand({Name = "panel", Aliases = {}, Description = "Opens the Dark Dex explorer for developers."}, function() loadstringCmd("https://raw.githubusercontent.com/scriptlisenbe-stack/luaprojectse3/refs/heads/main/CustomDex.lua", "Loading Dex++") end)
+RegisterCommand({Name = "panel", Aliases = {"dex"}, Description = "Opens the Dark Dex explorer for developers."}, function() loadstringCmd("https://raw.githubusercontent.com/scriptlisenbe-stack/luaprojectse3/refs/heads/main/CustomDex.lua", "Loading Dex++") end)
 RegisterCommand({Name = "pentest", Aliases = {"ptest"}, Description = "Opens a versatile Remote Viw GUI."}, function() loadstringCmd("https://raw.githubusercontent.com/scriptlisenbe-stack/luaprojectse3/refs/heads/main/RemoteEvent_Pentester_OP.txt", "Loading Script Hub...") end)
 RegisterCommand({Name = "teleportgui", Aliases = {"tpui", "uviewer"}, Description = "Opens a GUI to teleport to other game places."}, function() loadstringCmd("https://raw.githubusercontent.com/ltseverydayyou/uuuuuuu/main/Universe%20Viewer", "Loading Teleport GUI...") end)
 RegisterCommand({Name = "aimbot", Aliases = {}, Description = "Loads an aimbot script."}, function() loadstringCmd("https://raw.githubusercontent.com/zukatechdevelopment-ux/thingsandstuff/refs/heads/main/ZukasAimbot.lua", "Loading Aimbot...") end)
 RegisterCommand({Name = "scriptsearcher", Aliases = {"ssearch"}, Description = "Opens a GUI to search for in-game scripts."}, function() loadstringCmd("https://raw.githubusercontent.com/scriptlisenbe-stack/luaprojectse3/refs/heads/main/ScriptBloxSearch.lua", "Loading Script Searcher...") end)
 RegisterCommand({Name = "flyr15", Aliases = {}, Description = "Loads a specific R15 flight script."}, function() loadstringCmd("https://raw.githubusercontent.com/396abc/Script/refs/heads/main/FlyR15.lua", "Loading R15 Fly...") end)
-RegisterCommand({Name = "flingaddon", Aliases = {"flingui"}, Description = "Loads a GUI addon for flinging players."}, function() loadstringCmd("https://raw.githubusercontent.com/bloxtech1/luaprojects2/refs/heads/main/flingaddon.lua", "Loading Fling Addon...") end)
+RegisterCommand({Name = "playerfarm", Aliases = {"pfarm"}, Description = "Loads a GUI addon for flinging players."}, function() loadstringCmd("https://raw.githubusercontent.com/zukatechdevelopment-ux/thingsandstuff/refs/heads/main/ragebot.lua", "Loading Farming Addon...") end)
 RegisterCommand({Name = "bloxfruits", Aliases = {"bfruit"}, Description = "Loads the s0ulzV4 script hub."}, function() loadstringCmd("https://raw.githubusercontent.com/AhmadV99/Speed-Hub-X/main/Speed%20Hub%20X.lua", "Loading s0ulzV4...") end)
 
 -- Aura Command Integration (Adapted)
@@ -1221,3 +1221,4 @@ else
 end
 
 DoNotif("Zuka Command Handler v19 (Patched) | Prefix: '" .. Prefix .. "' | ;cmds for help", 6)
+
