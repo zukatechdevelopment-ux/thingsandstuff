@@ -4,6 +4,7 @@
 local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
 local Players = game:GetService("Players")
+local Workspace = game:GetService("Workspace") -- Added for Raycasting
 local LocalPlayer = Players.LocalPlayer
 
 -- =================================================================
@@ -195,7 +196,7 @@ do
     toggleKeyBox.TextColor3 = Color3.fromRGB(255,255,255)
     toggleKeyBox.Font = Enum.Font.Code
     toggleKeyBox.TextSize = 15
-    toggleKeyBox.Text = "MouseButton2" -- CHANGED
+    toggleKeyBox.Text = "MouseButton2"
     toggleKeyBox.PlaceholderText = "Key..."
     makeUICorner(toggleKeyBox, 6)
 
@@ -387,14 +388,44 @@ do
     local aiming = false
     local currentTarget = nil
     local silentAimEnabled = false
+    local ignoreTeamEnabled = false
+    local wallCheckEnabled = true -- [NEW] Wall check is on by default
     local espConnections = {}
+    
+    -- [NEW] Function to check if a part is visible (not behind a wall)
+    local function isPartVisible(targetPart)
+        local localCharacter = LocalPlayer.Character
+        if not localCharacter or not targetPart or not targetPart.Parent then return false end
+    
+        local targetCharacter = targetPart:FindFirstAncestorOfClass("Model")
+        if not targetCharacter then targetCharacter = targetPart.Parent end
+    
+        local camera = Workspace.CurrentCamera
+        local origin = camera.CFrame.Position
+    
+        local raycastParams = RaycastParams.new()
+        raycastParams.FilterType = Enum.RaycastFilterType.Exclude
+        raycastParams.FilterDescendantsInstances = {localCharacter, targetCharacter}
+    
+        local direction = targetPart.Position - origin
+        local result = Workspace:Raycast(origin, direction, raycastParams)
+    
+        -- If the ray hits something, it means an object is in the way.
+        if result then
+            return false
+        end
+        
+        -- If the ray hits nothing, the path is clear.
+        return true
+    end
+
 
     local function clearAllESP()
         for _, conn in pairs(espConnections) do
             if conn then conn:Disconnect() end
         end
         espConnections = {}
-        for _, v in pairs(workspace:GetDescendants()) do
+        for _, v in pairs(Workspace:GetDescendants()) do
             if v:IsA("BoxHandleAdornment") and (v.Name == "AimbotESP" or v.Name == "SelectedESP") then
                 v:Destroy()
             end
@@ -473,14 +504,14 @@ do
     UserInputService.InputBegan:Connect(function(input, processed)
         if processed then return end
         local key = toggleKeyBox.Text:upper()
-        if (key == "MOUSEBUTTON2" and input.UserInputType == Enum.UserInputType.MouseButton2) or -- CHANGED
+        if (key == "MOUSEBUTTON2" and input.UserInputType == Enum.UserInputType.MouseButton2) or
            (input.UserInputType == Enum.UserInputType.Keyboard and input.KeyCode.Name:upper() == key) then
             aiming = true
         end
     end)
     UserInputService.InputEnded:Connect(function(input)
         local key = toggleKeyBox.Text:upper()
-        if (key == "MOUSEBUTTON2" and input.UserInputType == Enum.UserInputType.MouseButton2) or -- CHANGED
+        if (key == "MOUSEBUTTON2" and input.UserInputType == Enum.UserInputType.MouseButton2) or
            (input.UserInputType == Enum.UserInputType.Keyboard and input.KeyCode.Name:upper() == key) then
             aiming = false
             clearAllESP()
@@ -492,14 +523,18 @@ do
         local minDist = math.huge
         local closestPlayer = nil
         for _, plr in ipairs(Players:GetPlayers()) do
-            if plr ~= LocalPlayer and plr.Character and plr.Character:FindFirstChild(partDropdown.Text) then
+            local isTeammate = ignoreTeamEnabled and plr.Team and LocalPlayer.Team and plr.Team == LocalPlayer.Team
+            if plr ~= LocalPlayer and not isTeammate and plr.Character and plr.Character:FindFirstChild(partDropdown.Text) then
                 local part = plr.Character[partDropdown.Text]
-                local pos, onScreen = workspace.CurrentCamera:WorldToViewportPoint(part.Position)
-                if onScreen then
-                    local dist = (Vector2.new(pos.X, pos.Y) - mousePos).Magnitude
-                    if dist < minDist then
-                        minDist = dist
-                        closestPlayer = plr
+                -- [MODIFIED] Check for visibility if the setting is enabled
+                if not wallCheckEnabled or isPartVisible(part) then
+                    local pos, onScreen = Workspace.CurrentCamera:WorldToViewportPoint(part.Position)
+                    if onScreen then
+                        local dist = (Vector2.new(pos.X, pos.Y) - mousePos).Magnitude
+                        if dist < minDist then
+                            minDist = dist
+                            closestPlayer = plr
+                        end
                     end
                 end
             end
@@ -514,8 +549,11 @@ do
         local targetPlayer = nil
 
         if playerTargetEnabled and selectedPlayerTarget and selectedPlayerTarget.Character then
-            targetPlayer = selectedPlayerTarget
-            aimPart = targetPlayer.Character:FindFirstChild(partDropdown.Text)
+            local isTeammate = ignoreTeamEnabled and selectedPlayerTarget.Team and LocalPlayer.Team and selectedPlayerTarget.Team == LocalPlayer.Team
+            if not isTeammate then
+                targetPlayer = selectedPlayerTarget
+                aimPart = targetPlayer.Character:FindFirstChild(partDropdown.Text)
+            end
         elseif selectedPart then
             aimPart = selectedPart
             local model = aimPart:FindFirstAncestorOfClass("Model")
@@ -532,43 +570,37 @@ do
         end
 
         if aiming and aimPart then
-            drawESP(aimPart, Color3.fromRGB(255, 80, 80), "AimbotESP")
-
-            -- =================================================================
-            -- Accurate Prediction Logic
-            -- =================================================================
-            local cam = workspace.CurrentCamera
-            -- Adjust this value based on the weapon's bullet speed for best results
-            local projectileSpeed = 2000 -- Studs per second
-            
-            -- 1. Calculate the time it will take for a projectile to reach the target's current position
-            local distance = (cam.CFrame.Position - aimPart.Position).Magnitude
-            local timeToTarget = distance / projectileSpeed
-            
-            -- 2. Get the target's current velocity (how fast they are moving)
-            local targetVelocity = aimPart.AssemblyLinearVelocity
-            
-            -- 3. Predict the target's future position
-            -- Formula: Future Position = Current Position + (Velocity * Time)
-            local predictedPosition = aimPart.Position + (targetVelocity * timeToTarget)
-            -- =================================================================
-
-            if silentAimEnabled then
-                getgenv().ZukaSilentAimTarget = predictedPosition
+            -- [MODIFIED] Final visibility check before aiming
+            if not wallCheckEnabled or isPartVisible(aimPart) then
+                drawESP(aimPart, Color3.fromRGB(255, 80, 80), "AimbotESP")
+    
+                local cam = Workspace.CurrentCamera
+                local projectileSpeed = 2000 
+                local distance = (cam.CFrame.Position - aimPart.Position).Magnitude
+                local timeToTarget = distance / projectileSpeed
+                local targetVelocity = aimPart.AssemblyLinearVelocity
+                local predictedPosition = aimPart.Position + (targetVelocity * timeToTarget)
+    
+                if silentAimEnabled then
+                    getgenv().ZukaSilentAimTarget = predictedPosition
+                else
+                    cam.CFrame = CFrame.new(cam.CFrame.Position, predictedPosition)
+                end
+                statusLabel.Text = "Aimbot: Targeting " .. (targetPlayer and targetPlayer.Name or aimPart.Name)
             else
-                cam.CFrame = CFrame.new(cam.CFrame.Position, predictedPosition)
+                statusLabel.Text = "Aimbot: Target is behind a wall"
             end
-            statusLabel.Text = "Aimbot: Targeting " .. (targetPlayer and targetPlayer.Name or aimPart.Name)
         elseif aiming then
-            statusLabel.Text = "Aimbot: No target found"
+            statusLabel.Text = "Aimbot: No visible target found"
         elseif not aiming and not selectedPart then
             statusLabel.Text = "Aimbot ready. Hold toggle key to aim."
         end
     end)
-
+    
+    -- [REPOSITIONED]
     local silentAimToggle = Instance.new("TextButton", page)
-    silentAimToggle.Size = UDim2.new(0, 180, 0, 32)
-    silentAimToggle.Position = UDim2.new(0, 45, 0, 250)
+    silentAimToggle.Size = UDim2.new(0, 170, 0, 32)
+    silentAimToggle.Position = UDim2.new(0, 20, 0, 250)
     silentAimToggle.BackgroundColor3 = Color3.fromRGB(40,40,40)
     silentAimToggle.TextColor3 = Color3.fromRGB(255,255,255)
     silentAimToggle.Font = Enum.Font.Code
@@ -578,5 +610,35 @@ do
     silentAimToggle.MouseButton1Click:Connect(function()
         silentAimEnabled = not silentAimEnabled
         silentAimToggle.Text = "Silent Aim: " .. (silentAimEnabled and "ON" or "OFF")
+    end)
+    
+    -- [REPOSITIONED]
+    local ignoreTeamToggle = Instance.new("TextButton", page)
+    ignoreTeamToggle.Size = UDim2.new(0, 170, 0, 32)
+    ignoreTeamToggle.Position = UDim2.new(0, 200, 0, 250)
+    ignoreTeamToggle.BackgroundColor3 = Color3.fromRGB(40,40,40)
+    ignoreTeamToggle.TextColor3 = Color3.fromRGB(255,255,255)
+    ignoreTeamToggle.Font = Enum.Font.Code
+    ignoreTeamToggle.TextSize = 15
+    ignoreTeamToggle.Text = "Ignore Team: OFF"
+    makeUICorner(ignoreTeamToggle, 6)
+    ignoreTeamToggle.MouseButton1Click:Connect(function()
+        ignoreTeamEnabled = not ignoreTeamEnabled
+        ignoreTeamToggle.Text = "Ignore Team: " .. (ignoreTeamEnabled and "ON" or "OFF")
+    end)
+    
+    -- [NEW] Wall Check Toggle Button
+    local wallCheckToggle = Instance.new("TextButton", page)
+    wallCheckToggle.Size = UDim2.new(0, 170, 0, 32)
+    wallCheckToggle.Position = UDim2.new(0, 380, 0, 250)
+    wallCheckToggle.BackgroundColor3 = Color3.fromRGB(40,40,40)
+    wallCheckToggle.TextColor3 = Color3.fromRGB(255,255,255)
+    wallCheckToggle.Font = Enum.Font.Code
+    wallCheckToggle.TextSize = 15
+    wallCheckToggle.Text = "Wall Check: ON"
+    makeUICorner(wallCheckToggle, 6)
+    wallCheckToggle.MouseButton1Click:Connect(function()
+        wallCheckEnabled = not wallCheckEnabled
+        wallCheckToggle.Text = "Wall Check: " .. (wallCheckEnabled and "ON" or "OFF")
     end)
 end
