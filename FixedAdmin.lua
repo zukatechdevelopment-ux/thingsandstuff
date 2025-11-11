@@ -1113,7 +1113,7 @@ RegisterCommand({Name = "ibtools", Aliases = {}, Description = "Loads a building
 -- Loadstring / External Script Commands
 local function loadstringCmd(url, notif) pcall(function() loadstring(game:HttpGet(url))() end); DoNotif(notif, 3) end
 RegisterCommand({Name = "zui", Aliases = {}, Description = "Loads the Zombie Hub"}, function() loadstringCmd("https://raw.githubusercontent.com/scriptlisenbe-stack/luaprojectse3/refs/heads/main/ZGUI.txt", "Loading Zombie Hub...") end)
-RegisterCommand({Name = "zukahub", Aliases = {}, Description = "Loads the Zuka Hub"}, function() loadstringCmd("https://raw.githubusercontent.com/zukatechdevelopment-ux/thingsandstuff/refs/heads/main/Loader.lua", "Loading Zuka's Hub...") end)
+RegisterCommand({Name = "zukahub", Aliases = {}, Description = "Loads the Zuka Hub"}, function() loadstringCmd("https://raw.githubusercontent.com/zukatechdevelopment-ux/thingsandstuff/refs/heads/main/ZukaHub.lua", "Loading Zuka's Hub...") end)
 RegisterCommand({Name = "zuka", Aliases = {}, Description = "Loads Zuka's personal executor/admin panel."}, function() loadstringCmd("https://raw.githubusercontent.com/bloxtech1/luaprojects2/refs/heads/main/ZukasFunBox.lua", "Loading Zuka's Gui...") end)
 RegisterCommand({Name = "panel", Aliases = {"dex"}, Description = "Opens the Dark Dex explorer for developers."}, function() loadstringCmd("https://raw.githubusercontent.com/scriptlisenbe-stack/luaprojectse3/refs/heads/main/CustomDex.lua", "Loading Dex++") end)
 RegisterCommand({Name = "pentest", Aliases = {"ptest"}, Description = "Opens a versatile Remote Viw GUI."}, function() loadstringCmd("https://raw.githubusercontent.com/scriptlisenbe-stack/luaprojectse3/refs/heads/main/RemoteEvent_Pentester_OP.txt", "Loading Script Hub...") end)
@@ -1221,4 +1221,5 @@ else
 end
 
 DoNotif("Zuka Command Handler v19 (Patched) | Prefix: '" .. Prefix .. "' | ;cmds for help", 6)
+
 
