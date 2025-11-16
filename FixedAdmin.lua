@@ -712,6 +712,189 @@ function Modules.ClickFling:Enable()
 end
 
 Modules.Reach = { State = { UI = nil } }; function Modules.Reach:_getTool() return (LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Tool")) or (LocalPlayer:FindFirstChildOfClass("Backpack") and LocalPlayer.Backpack:FindFirstChildOfClass("Tool")) end; function Modules.Reach:Apply(reachType, size) if self.State.UI then self.State.UI:Destroy() end; local tool = self:_getTool(); if not tool then return DoNotif("No tool equipped.", 3) end; local parts = {}; for _, p in ipairs(tool:GetDescendants()) do if p:IsA("BasePart") then table.insert(parts, p) end end; if #parts == 0 then return DoNotif("Tool has no parts.", 3) end; local ui = Instance.new("ScreenGui"); ui.Name = "ReachPartSelector"; NaProtectUI(ui); self.State.UI = ui; local frame = Instance.new("Frame", ui); frame.Size = UDim2.fromOffset(250, 200); frame.Position = UDim2.new(0.5, -125, 0.5, -100); frame.BackgroundColor3 = Color3.fromRGB(35, 35, 45); Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 8); local title = Instance.new("TextLabel", frame); title.Size = UDim2.new(1, 0, 0, 30); title.BackgroundTransparency = 1; title.Font = Enum.Font.Code; title.Text = "Select a Part"; title.TextColor3 = Color3.fromRGB(200, 220, 255); title.TextSize = 16; local scroll = Instance.new("ScrollingFrame", frame); scroll.Size = UDim2.new(1, -20, 1, -40); scroll.Position = UDim2.fromOffset(10, 35); scroll.BackgroundColor3 = frame.BackgroundColor3; scroll.BorderSizePixel = 0; scroll.ScrollBarThickness = 6; local layout = Instance.new("UIListLayout", scroll); layout.Padding = UDim.new(0, 5); for _, part in ipairs(parts) do local btn = Instance.new("TextButton", scroll); btn.Size = UDim2.new(1, 0, 0, 30); btn.BackgroundColor3 = Color3.fromRGB(50, 50, 65); btn.TextColor3 = Color3.fromRGB(220, 220, 230); btn.Font = Enum.Font.Code; btn.Text = part.Name; btn.TextSize = 14; Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 4); btn.MouseButton1Click:Connect(function() if not part.Parent then ui:Destroy(); return DoNotif("Part gone.", 3) end; if not part:FindFirstChild("OGSize3") then local v = Instance.new("Vector3Value", part); v.Name = "OGSize3"; v.Value = part.Size end; if part:FindFirstChild("FunTIMES") then part.FunTIMES:Destroy() end; local sb = Instance.new("SelectionBox", part); sb.Adornee = part; sb.Name = "FunTIMES"; sb.LineThickness = 0.02; sb.Color3 = reachType == "box" and Color3.fromRGB(0,100,255) or Color3.fromRGB(255,0,0); if reachType == "box" then part.Size = Vector3.one * size else part.Size = Vector3.new(part.Size.X, part.Size.Y, size) end; part.Massless = true; ui:Destroy(); self.State.UI = nil; DoNotif("Applied reach.", 3) end) end end; function Modules.Reach:Reset() local tool = self:_getTool(); if not tool then return DoNotif("No tool to reset.", 3) end; for _, p in ipairs(tool:GetDescendants()) do if p:IsA("BasePart") then if p:FindFirstChild("OGSize3") then p.Size = p.OGSize3.Value; p.OGSize3:Destroy() end; if p:FindFirstChild("FunTIMES") then p.FUNTIMES:Destroy() end end end; DoNotif("Tool reach reset.", 3) end
+
+--==========================================================
+-- NEW: ModelReach Module
+--==========================================================
+
+Modules.ModelReach = {
+    State = {
+        ActiveUIs = {} -- Store UI on a per-model basis
+    }
+}
+
+-- Private function to find a model in the workspace
+function Modules.ModelReach:_findModel(modelName)
+    if not modelName or modelName == "" then return nil end
+    local inputName = modelName:lower()
+    local exactMatch = nil
+    local partialMatch = nil
+
+    for _, child in ipairs(workspace:GetChildren()) do
+        if child:IsA("Model") then
+            local modelLowerName = child.Name:lower()
+            if modelLowerName == inputName then
+                exactMatch = child
+                break
+            end
+            if not partialMatch and modelLowerName:sub(1, #inputName) == inputName then
+                partialMatch = child
+            end
+        end
+    end
+    return exactMatch or partialMatch
+end
+
+-- Private function to get a tool from a model
+function Modules.ModelReach:_getToolFromModel(model)
+    if not model then return nil end
+    return model:FindFirstChildOfClass("Tool")
+end
+
+-- Main function to apply reach to a part of a tool in a model
+function Modules.ModelReach:Apply(modelName, reachType, size)
+    local model = self:_findModel(modelName)
+    if not model then
+        return DoNotif("Model '" .. tostring(modelName) .. "' not found.", 3)
+    end
+
+    -- Clean up any previous UI for this model to avoid duplicates
+    if self.State.ActiveUIs[model] then
+        self.State.ActiveUIs[model]:Destroy()
+        self.State.ActiveUIs[model] = nil
+    end
+
+    local tool = self:_getToolFromModel(model)
+    if not tool then
+        return DoNotif("No tool found in model '" .. model.Name .. "'.", 3)
+    end
+
+    local parts = {}
+    for _, p in ipairs(tool:GetDescendants()) do
+        if p:IsA("BasePart") then
+            table.insert(parts, p)
+        end
+    end
+
+    if #parts == 0 then
+        return DoNotif("Tool '" .. tool.Name .. "' has no parts to modify.", 3)
+    end
+
+    -- Create UI for part selection (similar to existing Reach module)
+    local ui = Instance.new("ScreenGui")
+    ui.Name = "ModelReachPartSelector"
+    NaProtectUI(ui)
+    self.State.ActiveUIs[model] = ui
+
+    local frame = Instance.new("Frame", ui)
+    frame.Size = UDim2.fromOffset(250, 200)
+    frame.Position = UDim2.new(0.5, -125, 0.5, -100)
+    frame.BackgroundColor3 = Color3.fromRGB(35, 35, 45)
+    Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 8)
+
+    local title = Instance.new("TextLabel", frame)
+    title.Size = UDim2.new(1, 0, 0, 30)
+    title.BackgroundTransparency = 1
+    title.Font = Enum.Font.Code
+    title.Text = "Select a Part from " .. tool.Name
+    title.TextColor3 = Color3.fromRGB(200, 220, 255)
+    title.TextSize = 16
+
+    local scroll = Instance.new("ScrollingFrame", frame)
+    scroll.Size = UDim2.new(1, -20, 1, -40)
+    scroll.Position = UDim2.fromOffset(10, 35)
+    scroll.BackgroundColor3 = frame.BackgroundColor3
+    scroll.BorderSizePixel = 0
+    scroll.ScrollBarThickness = 6
+
+    local layout = Instance.new("UIListLayout", scroll)
+    layout.Padding = UDim.new(0, 5)
+
+    for _, part in ipairs(parts) do
+        local btn = Instance.new("TextButton", scroll)
+        btn.Size = UDim2.new(1, 0, 0, 30)
+        btn.BackgroundColor3 = Color3.fromRGB(50, 50, 65)
+        btn.TextColor3 = Color3.fromRGB(220, 220, 230)
+        btn.Font = Enum.Font.Code
+        btn.Text = part.Name
+        btn.TextSize = 14
+        Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 4)
+
+        btn.MouseButton1Click:Connect(function()
+            if not part or not part.Parent then
+                ui:Destroy()
+                self.State.ActiveUIs[model] = nil
+                return DoNotif("Part no longer exists.", 3)
+            end
+
+            -- Store original size if not already stored
+            if not part:FindFirstChild("OGSize3") then
+                local v = Instance.new("Vector3Value", part)
+                v.Name = "OGSize3"
+                v.Value = part.Size
+            end
+
+            -- Remove old selection box if it exists
+            if part:FindFirstChild("FunTIMES") then
+                part.FunTIMES:Destroy()
+            end
+
+            -- Add new selection box
+            local sb = Instance.new("SelectionBox", part)
+            sb.Adornee = part
+            sb.Name = "FunTIMES"
+            sb.LineThickness = 0.02
+            sb.Color3 = reachType == "box" and Color3.fromRGB(0, 100, 255) or Color3.fromRGB(255, 0, 0)
+
+            -- Apply size change
+            if reachType == "box" then
+                part.Size = Vector3.one * size
+            else -- directional
+                part.Size = Vector3.new(part.Size.X, part.Size.Y, size)
+            end
+            part.Massless = true
+
+            -- Clean up UI
+            ui:Destroy()
+            self.State.ActiveUIs[model] = nil
+            DoNotif("Applied reach to '" .. part.Name .. "' in model '" .. model.Name .. "'.", 3)
+        end)
+    end
+end
+
+-- Function to reset reach on a model's tool
+function Modules.ModelReach:Reset(modelName)
+    local model = self:_findModel(modelName)
+    if not model then
+        return DoNotif("Model '" .. tostring(modelName) .. "' not found.", 3)
+    end
+
+    local tool = self:_getToolFromModel(model)
+    local wasReset = false
+    
+    local descendants = tool and tool:GetDescendants() or model:GetDescendants()
+
+    for _, p in ipairs(descendants) do
+        if p:IsA("BasePart") then
+            if p:FindFirstChild("OGSize3") then
+                p.Size = p.OGSize3.Value
+                p.OGSize3:Destroy()
+                wasReset = true
+            end
+            if p:FindFirstChild("FunTIMES") then
+                p.FunTIMES:Destroy()
+                wasReset = true
+            end
+        end
+    end
+    
+    if wasReset then
+        DoNotif("Tool reach reset for model '" .. model.Name .. "'.", 3)
+    else
+        DoNotif("No active reach found on model '" .. model.Name .. "'.", 3)
+    end
+end
+
 Modules.IDE = { State = { UI = nil } }; function Modules.IDE:Toggle() if self.State.UI then self.State.UI:Destroy(); self.State.UI = nil; return end; local u = Instance.new("ScreenGui"); u.Name = "IDE_UI"; NaProtectUI(u); self.State.UI = u; local f = Instance.new("Frame", u); f.Size = UDim2.fromOffset(550, 400); f.Position = UDim2.new(0.5, -275, 0.5, -200); f.BackgroundColor3 = Color3.fromRGB(35, 35, 45); Instance.new("UICorner", f).CornerRadius = UDim.new(0, 8); local h = Instance.new("Frame", f); h.Size = UDim2.new(1, 0, 0, 32); h.BackgroundColor3 = Color3.fromRGB(25, 25, 35); local t = Instance.new("TextLabel", h); t.Size = UDim2.new(1, -30, 1, 0); t.Position = UDim2.fromOffset(10, 0); t.BackgroundTransparency = 1; t.Font = Enum.Font.Code; t.Text = "Zuka IDE"; t.TextColor3 = Color3.fromRGB(200, 220, 255); t.TextXAlignment = Enum.TextXAlignment.Left; t.TextSize = 16; local c = Instance.new("TextButton", h); c.Size = UDim2.fromOffset(32, 32); c.Position = UDim2.new(1, -32, 0, 0); c.BackgroundTransparency = 1; c.Font = Enum.Font.Code; c.Text = "X"; c.TextColor3 = Color3.fromRGB(200, 200, 220); c.TextSize = 20; c.MouseButton1Click:Connect(function() self:Toggle() end); local sf = Instance.new("ScrollingFrame", f); sf.Size = UDim2.new(1, -20, 1, -82); sf.Position = UDim2.fromOffset(10, 37); sf.BackgroundColor3 = Color3.fromRGB(25, 25, 35); sf.BorderSizePixel = 0; sf.ScrollBarThickness = 8; local tb = Instance.new("TextBox", sf); tb.Size = UDim2.new(1, 0, 0, 0); tb.AutomaticSize = Enum.AutomaticSize.Y; tb.BackgroundColor3 = Color3.fromRGB(25, 25, 35); tb.MultiLine = true; tb.Font = Enum.Font.Code; tb.TextColor3 = Color3.fromRGB(220, 220, 230); tb.TextSize = 14; tb.TextXAlignment = Enum.TextXAlignment.Left; tb.TextYAlignment = Enum.TextYAlignment.Top; tb.ClearTextOnFocus = false; local eb = Instance.new("TextButton", f); eb.Size = UDim2.fromOffset(100, 30); eb.Position = UDim2.new(1, -120, 1, -40); eb.BackgroundColor3 = Color3.fromRGB(80, 160, 80); eb.Font = Enum.Font.Code; eb.Text = "Execute"; eb.TextColor3 = Color3.white; eb.TextSize = 16; Instance.new("UICorner", eb).CornerRadius = UDim.new(0, 5); local cb = Instance.new("TextButton", f); cb.Size = UDim2.fromOffset(80, 30); cb.Position = UDim2.new(1, -210, 1, -40); cb.BackgroundColor3 = Color3.fromRGB(180, 80, 80); cb.Font = Enum.Font.Code; cb.Text = "Clear"; cb.TextColor3 = Color3.white; cb.TextSize = 16; Instance.new("UICorner", cb).CornerRadius = UDim.new(0, 5); eb.MouseButton1Click:Connect(function() local code = tb.Text; if #code > 0 then local s, r = pcall(function() local f, e = loadstring(code); if typeof(f) ~= "function" then error("Syntax error: " .. tostring(e or f)) end; setfenv(f, getfenv()); f() end); if s then DoNotif("Script executed.", 3) else DoNotif("Error: " .. tostring(r), 6) end end end); cb.MouseButton1Click:Connect(function() tb.Text = "" end); local function drag(o) local d, s, p; o.InputBegan:Connect(function(i) if i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch then d, s, p = true, i.Position, o.Position; i.Changed:Connect(function() if i.UserInputState == Enum.UserInputState.End then d = false end end) end end); o.InputChanged:Connect(function(i) if (i.UserInputType == Enum.UserInputType.MouseMovement or i.UserInputType == Enum.UserInputType.Touch) and d then local delta = i.Position - s; o.Position = UDim2.new(p.X.Scale, p.X.Offset + delta.X, p.Y.Scale, p.Y.Offset + delta.Y) end end) end; drag(f) end
 Modules.ESP = {
     State = {
@@ -874,6 +1057,248 @@ Modules.Decompiler = {State = {IsInitialized = false}}; function Modules.Decompi
 Modules.Godmode = { State = { IsEnabled = false, Method = nil, UI = nil, Connection = nil, LastHealth = 100 } }; function Modules.Godmode:_CleanupUI() if self.State.UI then self.State.UI:Destroy(); self.State.UI = nil end end; function Modules.Godmode:Disable() if not self.State.IsEnabled then return end; self:_CleanupUI(); local char = LocalPlayer.Character; if self.State.Method == "ForceField" and char then local ff = char:FindFirstChild("ZukaGodmodeFF"); if ff then ff:Destroy() end elseif self.State.Method == "HealthLock" and self.State.Connection then self.State.Connection:Disconnect(); self.State.Connection = nil end; self.State.IsEnabled = false; self.State.Method = nil; DoNotif("Godmode OFF", 2) end; function Modules.Godmode:EnableForceField() self:Disable(); local char = LocalPlayer.Character; if not char then return DoNotif("Character not found.", 3) end; local ff = Instance.new("ForceField", char); ff.Name = "ZukaGodmodeFF"; self.State.IsEnabled = true; self.State.Method = "ForceField"; DoNotif("Godmode ON (ForceField)", 2) end; function Modules.Godmode:EnableHealthLock() self:Disable(); local char = LocalPlayer.Character; local humanoid = char and char:FindFirstChildOfClass("Humanoid"); if not humanoid then return DoNotif("Humanoid not found.", 3) end; self.State.LastHealth = humanoid.Health; self.State.Connection = humanoid.HealthChanged:Connect(function(newHealth) if newHealth < self.State.LastHealth and newHealth > 0 then humanoid.Health = self.State.LastHealth else self.State.LastHealth = newHealth end end); self.State.IsEnabled = true; self.State.Method = "HealthLock"; DoNotif("Godmode ON (Health Lock)", 2) end; function Modules.Godmode:ShowMenu() self:_CleanupUI(); local gui = Instance.new("ScreenGui"); gui.Name = "GodmodeUI"; NaProtectUI(gui); self.State.UI = gui; local frame = Instance.new("Frame", gui); frame.Size = UDim2.fromOffset(250, 210); frame.Position = UDim2.new(0.5, -125, 0.5, -105); frame.BackgroundColor3 = Color3.fromRGB(35, 35, 45); Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 8); local title = Instance.new("TextLabel", frame); title.Size = UDim2.new(1, 0, 0, 30); title.BackgroundTransparency = 1; title.Font = Enum.Font.Code; title.Text = "Godmode Methods"; title.TextColor3 = Color3.fromRGB(200, 220, 255); title.TextSize = 16; local buttonContainer = Instance.new("Frame", frame); buttonContainer.Size = UDim2.new(1, -20, 1, -40); buttonContainer.Position = UDim2.fromOffset(10, 35); buttonContainer.BackgroundTransparency = 1; local list = Instance.new("UIListLayout", buttonContainer); list.Padding = UDim.new(0, 5); list.SortOrder = Enum.SortOrder.LayoutOrder; local function makeButton(text, callback) local btn = Instance.new("TextButton", buttonContainer); btn.Size = UDim2.new(1, 0, 0, 35); btn.BackgroundColor3 = Color3.fromRGB(50, 50, 65); btn.TextColor3 = Color3.fromRGB(220, 220, 230); btn.Font = Enum.Font.Code; btn.Text = text; btn.TextSize = 14; Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 4); btn.MouseButton1Click:Connect(callback); return btn end; makeButton("Enable: ForceField (Visual)", function() self:_CleanupUI(); self:EnableForceField() end); makeButton("Enable: Health Lock (Silent)", function() self:_CleanupUI(); self:EnableHealthLock() end); if self.State.IsEnabled then makeButton("Disable Godmode", function() self:_CleanupUI(); self:Disable() end) end; makeButton("Close", function() self:_CleanupUI() end).BackgroundColor3 = Color3.fromRGB(180, 80, 80) end; function Modules.Godmode:HandleCommand(args) local choice = args[1] and args[1]:lower() or nil; if choice == "strong" or choice == "forcefield" or choice == "ff" then return self:EnableForceField() end; if choice == "hook" or choice == "hooking" or choice == "healthlock" or choice == "lock" then return self:EnableHealthLock() end; if choice == "off" or choice == "disable" then return self:Disable() end; self:ShowMenu() end
 Modules.iBTools = { State = { IsActive = false, Tool = nil, UI = nil, Highlight = nil, Connections = {}, History = {}, SaveHistory = {}, CurrentPart = nil, CurrentMode = "delete" } }; function Modules.iBTools:_CleanupUI() if self.State.UI then self.State.UI:Destroy() end; if self.State.Highlight then self.State.Highlight:Destroy() end; for _, conn in ipairs(self.State.Connections) do conn:Disconnect() end; self.State.UI, self.State.Highlight = nil, nil; table.clear(self.State.Connections) end; function Modules.iBTools:Disable() if not self.State.IsActive then return end; self:_CleanupUI(); if self.State.Tool then self.State.Tool:Destroy() end; self.State = { IsActive = false, Tool = nil, UI = nil, Highlight = nil, Connections = {}, History = {}, SaveHistory = {}, CurrentPart = nil, CurrentMode = "delete" }; DoNotif("iBTools unloaded.", 3) end; function Modules.iBTools:Enable() if self.State.IsActive then return DoNotif("iBTools is already active.", 3) end; local backpack = LocalPlayer:FindFirstChildOfClass("Backpack"); if not backpack then return DoNotif("Backpack not found.", 3) end; self.State.IsActive = true; self.State.Tool = Instance.new("Tool", backpack); self.State.Tool.Name = "iBTools"; self.State.Tool.RequiresHandle = false; self.State.Tool.Equipped:Connect(function(mouse) local state = self.State; state.Highlight = Instance.new("SelectionBox"); state.Highlight.Name = "iBToolsSelection"; state.Highlight.LineThickness = 0.04; state.Highlight.Color3 = Color3.fromRGB(0, 170, 255); state.Highlight.Parent = workspace.CurrentCamera; local function formatVectorString(vec) return string.format("Vector3.new(%s,%s,%s)", tostring(vec.X), tostring(vec.Y), tostring(vec.Z)) end; local function updateStatus(part) if not state.UI then return end; local statusLabel = state.UI:FindFirstChild("Panel", true) and state.UI.Panel:FindFirstChild("Status"); if not statusLabel then return end; local targetText = "none"; if part then targetText = part:GetFullName() end; statusLabel.Text = string.format("Mode: %s | Target: %s", state.CurrentMode:upper(), targetText) end; local function setTarget(part) if part and not part:IsA("BasePart") then part = nil end; state.CurrentPart = part; if state.Highlight then state.Highlight.Adornee = part end; updateStatus(part) end; local modeHandlers = { delete = function(part) table.insert(state.History, {part = part, parent = part.Parent, cframe = part.CFrame}); table.insert(state.SaveHistory, {name = part.Name, position = part.Position}); part.Parent = nil; setTarget(nil); DoNotif("Deleted '"..part.Name.."'", 2) end, anchor = function(part) part.Anchored = not part.Anchored; updateStatus(part); DoNotif(string.format("%s anchored %s", part.Name, part.Anchored and "enabled" or "disabled"), 2) end, collide = function(part) part.CanCollide = not part.CanCollide; updateStatus(part); DoNotif(string.format("%s CanCollide %s", part.Name, part.CanCollide and "enabled" or "disabled"), 2) end }; local uiActions = { setMode = function(mode) state.CurrentMode = mode; updateStatus(state.CurrentPart) end, undo = function() local r = table.remove(state.History); if r then r.part.Parent = r.parent; pcall(function() r.part.CFrame = r.cframe end); setTarget(r.part); DoNotif("Restored '"..r.part.Name.."'", 2) else DoNotif("Nothing to undo.", 2) end end, copy = function() if #state.SaveHistory == 0 then return DoNotif("No deleted parts to export.", 3) end; local l = {}; for _, d in ipairs(state.SaveHistory) do table.insert(l, string.format("for _,v in ipairs(workspace:FindPartsInRegion3(Region3.new(%s, %s), nil, math.huge)) do if v.Name == %q then v:Destroy() end end", formatVectorString(d.position), formatVectorString(d.position), d.name)) end; setclipboard(table.concat(l, "\n")); DoNotif("Copied delete script to clipboard.", 3) end }; local gui = Instance.new("ScreenGui"); gui.Name = "iBToolsUI"; NaProtectUI(gui); self.State.UI = gui; local f = Instance.new("Frame", gui); f.Name = "Panel"; f.Size = UDim2.new(0, 240, 0, 260); f.Position = UDim2.new(0.05, 0, 0.4, 0); f.BackgroundColor3 = Color3.fromRGB(26, 26, 26); Instance.new("UICorner", f).CornerRadius = UDim.new(0, 8); local h = Instance.new("Frame", f); h.Name = "Header"; h.Size = UDim2.new(1, 0, 0, 36); h.BackgroundColor3 = Color3.fromRGB(38, 38, 38); h.Active = true; local t = Instance.new("TextLabel", h); t.BackgroundTransparency=1;t.Font=Enum.Font.GothamSemibold;t.Text="iB Tools";t.Size=UDim2.new(1,-40,1,0);t.Position=UDim2.new(0,12,0,0);t.TextColor3=Color3.new(1,1,1);t.TextXAlignment=Enum.TextXAlignment.Left;local s=Instance.new("TextLabel",f);s.Name="Status";s.BackgroundTransparency=1;s.Size=UDim2.new(1,-24,0,20);s.Position=UDim2.new(0,12,0,40);s.Font=Enum.Font.Code;s.TextColor3=Color3.fromRGB(200,200,200);s.TextXAlignment=Enum.TextXAlignment.Left;s.Text="Mode: DELETE | Target: none";local bH=Instance.new("Frame",f);bH.BackgroundTransparency=1;bH.Size=UDim2.new(1,-24,1,-72);bH.Position=UDim2.new(0,12,0,68);local l=Instance.new("UIListLayout",bH);l.Padding=UDim.new(0,6);local mB={};local function btn(txt)local b=Instance.new("TextButton",bH);b.Name=txt;b.Size=UDim2.new(1,0,0,32);b.Font=Enum.Font.GothamSemibold;b.Text=txt;b.TextColor3=Color3.new(1,1,1);b.TextSize=14;local c=Instance.new("UICorner",b);c.CornerRadius=UDim.new(0,5);return b end;local function rMB()for m,b in pairs(mB)do b.BackgroundColor3=(state.CurrentMode==m and Color3.fromRGB(80,110,255)or Color3.fromRGB(52,52,52))end end;for m,lbl in pairs({delete="Delete",anchor="Toggle Anchor",collide="Toggle CanCollide"})do local b=btn(lbl);mB[m]=b;b.MouseButton1Click:Connect(function()uiActions.setMode(m);rMB()end)end;btn("Undo Last Delete").MouseButton1Click:Connect(uiActions.undo);btn("Copy Delete Script").MouseButton1Click:Connect(uiActions.copy);local function drag(o,h) local d,s,p; h.InputBegan:Connect(function(i) if i.UserInputType==Enum.UserInputType.MouseButton1 then d,s,p=true,i.Position,o.Position;i.Changed:Connect(function()if i.UserInputState==Enum.UserInputState.End then d=false end end)end end); h.InputChanged:Connect(function(i) if i.UserInputType==Enum.UserInputType.MouseMovement and d then o.Position=UDim2.new(p.X.Scale,p.X.Offset+i.Position.X-s.X,p.Y.Scale,p.Y.Offset+i.Position.Y-s.Y)end end)end;drag(f,h);rMB(); table.insert(state.Connections, mouse.Move:Connect(function() setTarget(mouse.Target) end)); table.insert(state.Connections, mouse.Button1Down:Connect(function() if state.CurrentPart then modeHandlers[state.CurrentMode](state.CurrentPart) end end)) end); self.State.Tool.Unequipped:Connect(function() self:_CleanupUI() end); self.State.Tool.AncestryChanged:Connect(function(_, parent) if not parent then self:Disable() end end); DoNotif("iBTools loaded. Equip the tool to use it.", 3) end; function Modules.iBTools:Toggle() if self.State.IsActive then self:Disable() else self:Enable() end end
 
+Modules.AntiKB = {
+    State = {
+        IsActive = false,
+        HealthConnection = nil,
+        CharacterConnection = nil,
+        LastHealth = 100 
+    }
+}
+
+function Modules.AntiKB:_cleanup()
+    if self.State.HealthConnection then
+        self.State.HealthConnection:Disconnect()
+        self.State.HealthConnection = nil
+    end
+    if self.State.CharacterConnection then
+        self.State.CharacterConnection:Disconnect()
+        self.State.CharacterConnection = nil
+    end
+end
+
+function Modules.AntiKB:Disable()
+    if not self.State.IsActive then return end
+    self.State.IsActive = false
+    self:_cleanup()
+    DoNotif("Anti Kill Brick disabled.", 3)
+end
+
+function Modules.AntiKB:Enable()
+    if self.State.IsActive then return end
+    local char = LocalPlayer.Character
+    local humanoid = char and char:FindFirstChildOfClass("Humanoid")
+    
+    -- Function to re-enable on character respawn
+    local function onCharacterAdded()
+        task.wait(0.1) -- Small wait for Humanoid to fully initialize
+        if LocalPlayer.Character and self.State.IsActive then
+            self:Enable() -- Re-run enable to re-hook the new Humanoid
+        end
+    end
+
+    if not humanoid then
+        -- If character is not found, hook CharacterAdded and wait
+        self.State.CharacterConnection = LocalPlayer.CharacterAdded:Connect(onCharacterAdded)
+        return DoNotif("Character not available. Waiting for spawn.", 3)
+    end
+    
+    self:Disable() -- Clean any previous state, including CharacterConnection
+    self.State.IsActive = true
+    
+    -- Set LastHealth based on current Humanoid health
+    self.State.LastHealth = humanoid.Health or 100
+    
+    -- Health Changed Listener: Core Logic for Anti-Damage
+    self.State.HealthConnection = humanoid.HealthChanged:Connect(function(newHealth)
+        if not self.State.IsActive then return end
+        
+        -- If damage was taken (health dropped) but the player is not dead
+        if newHealth < self.State.LastHealth and newHealth > 0 then
+            humanoid.Health = self.State.LastHealth -- Restore health
+        end
+        
+        -- Always update LastHealth with the current Humanoid health
+        self.State.LastHealth = humanoid.Health
+    end)
+    
+    -- Handle respawns to re-hook the HealthChanged event to the new Humanoid
+    self.State.CharacterConnection = LocalPlayer.CharacterAdded:Connect(onCharacterAdded)
+
+    DoNotif("Anti Kill Brick enabled (Health Lock).", 3)
+end
+
+function Modules.AntiKB:Toggle()
+    if self.State.IsActive then
+        self:Disable()
+    else
+        self:Enable()
+    end
+end
+
+Modules.PartSelector = {
+    State = {
+        IsActive = false,
+        Connection = nil,
+        UI = nil
+    }
+}
+
+function Modules.PartSelector:Disable()
+    if not self.State.IsActive then return end
+    self.State.IsActive = false
+
+    if self.State.Connection then
+        self.State.Connection:Disconnect()
+        self.State.Connection = nil
+    end
+
+    if self.State.UI then
+        self.State.UI:Destroy()
+        self.State.UI = nil
+    end
+
+    DoNotif("Part Selector disabled.", 3)
+end
+
+function Modules.PartSelector:Enable()
+    if self.State.IsActive then return end
+    self:Disable() -- Ensure clean state
+    self.State.IsActive = true
+
+    --// --- Services & Player Objects ---
+    local RunService = game:GetService("RunService")
+    local mouse = LocalPlayer:GetMouse() -- Using the reliable legacy mouse object
+
+    --// --- UI Creation ---
+    local ui = Instance.new("ScreenGui")
+    ui.Name = "PartSelectorUI"
+    NaProtectUI(ui)
+    self.State.UI = ui
+
+    local mainFrame = Instance.new("Frame", ui)
+    mainFrame.Size = UDim2.fromOffset(350, 110)
+    mainFrame.Position = UDim2.new(0.5, -175, 1, -130)
+    mainFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
+    mainFrame.BackgroundTransparency = 0.2
+    Instance.new("UICorner", mainFrame).CornerRadius = UDim.new(0, 6)
+    Instance.new("UIStroke", mainFrame).Color = Color3.fromRGB(80, 80, 100)
+
+    local title = Instance.new("TextLabel", mainFrame)
+    title.Size = UDim2.new(1, 0, 0, 25)
+    title.BackgroundColor3 = Color3.fromRGB(55, 55, 70)
+    title.Font = Enum.Font.GothamSemibold
+    title.Text = "Part & Model Selector"
+    title.TextColor3 = Color3.fromRGB(220, 220, 255)
+    title.TextSize = 16
+    local titleCorner = Instance.new("UICorner", title)
+    titleCorner.CornerRadius = UDim.new(0, 6)
+    
+    local contentFrame = Instance.new("Frame", mainFrame)
+    contentFrame.Size = UDim2.new(1, 0, 1, -25)
+    contentFrame.Position = UDim2.fromOffset(0, 25)
+    contentFrame.BackgroundTransparency = 1
+    
+    local listLayout = Instance.new("UIListLayout", contentFrame)
+    listLayout.Padding = UDim.new(0, 4)
+    listLayout.SortOrder = Enum.SortOrder.LayoutOrder
+    listLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+    
+    local padding = Instance.new("UIPadding", contentFrame)
+    padding.PaddingTop = UDim.new(0, 5)
+    padding.PaddingLeft = UDim.new(0, 5)
+    padding.PaddingRight = UDim.new(0, 5)
+
+    local fullPathLabel = Instance.new("TextLabel", contentFrame)
+    fullPathLabel.Name = "FullPathLabel"
+    fullPathLabel.Size = UDim2.new(1, 0, 0, 16)
+    fullPathLabel.BackgroundTransparency = 1
+    fullPathLabel.Font = Enum.Font.Code
+    fullPathLabel.Text = "Path: None"
+    fullPathLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
+    fullPathLabel.TextXAlignment = Enum.TextXAlignment.Left
+    fullPathLabel.TextSize = 12
+
+    local modelNameLabel = Instance.new("TextLabel", contentFrame)
+    modelNameLabel.Name = "ModelNameLabel"
+    modelNameLabel.Size = UDim2.new(1, 0, 0, 18)
+    modelNameLabel.BackgroundTransparency = 1
+    modelNameLabel.Font = Enum.Font.GothamBold
+    modelNameLabel.Text = "Model: None"
+    modelNameLabel.TextColor3 = Color3.fromRGB(80, 150, 255)
+    modelNameLabel.TextXAlignment = Enum.TextXAlignment.Left
+    modelNameLabel.TextSize = 14
+
+    local copyButton = Instance.new("TextButton", contentFrame)
+    copyButton.Name = "CopyButton"
+    copyButton.Size = UDim2.new(1, 0, 0, 22)
+    copyButton.BackgroundColor3 = Color3.fromRGB(80, 160, 80)
+    copyButton.Font = Enum.Font.Code
+    copyButton.Text = "Copy Model Name"
+    copyButton.TextColor3 = Color3.white
+    copyButton.TextSize = 14
+    copyButton.Visible = false
+    Instance.new("UICorner", copyButton).CornerRadius = UDim.new(0, 4)
+    
+    local currentModelName = nil
+    copyButton.MouseButton1Click:Connect(function()
+        if currentModelName then
+            setclipboard(currentModelName)
+            DoNotif("Copied '" .. currentModelName .. "' to clipboard.", 3)
+        end
+    end)
+    
+    --// --- CORE LOGIC (REWRITTEN) ---
+    self.State.Connection = RunService.RenderStepped:Connect(function()
+        -- Set the filter to ignore the player's character and our UI
+        mouse.TargetFilter = LocalPlayer.Character or nil
+        
+        local part = mouse.Target
+        
+        if part then
+            fullPathLabel.Text = "Path: " .. part:GetFullName()
+
+            -- Find the top-level model in workspace
+            local topModel = nil
+            local ancestor = part
+            while ancestor and ancestor.Parent ~= workspace do
+                ancestor = ancestor.Parent
+            end
+            if ancestor and ancestor:IsA("Model") then
+                topModel = ancestor
+            end
+
+            if topModel then
+                modelNameLabel.Text = "Model: " .. topModel.Name
+                copyButton.Visible = true
+                currentModelName = topModel.Name
+            else
+                modelNameLabel.Text = "Model: (Not in a model)"
+                copyButton.Visible = false
+                currentModelName = nil
+            end
+        else
+            fullPathLabel.Text = "Path: None"
+            modelNameLabel.Text = "Model: None"
+            copyButton.Visible = false
+            currentModelName = nil
+        end
+    end)
+
+    DoNotif("Part Selector enabled.", 3)
+end
+
+function Modules.PartSelector:Toggle()
+    if self.State.IsActive then
+        self:Disable()
+    else
+        self:Enable()
+    end
+end
+
+local isCameraFixed = false
+local originalMaxZoom = nil
+local originalOcclusionMode = nil
 local cameraFixConnection = nil
 -- ==========================================================
 -- Command Definitions (Now using RegisterCommand)
@@ -882,35 +1307,70 @@ local cameraFixConnection = nil
 RegisterCommand({
     Name = "fixcam",
     Aliases = {"fix", "unlockcam"},
-    Description = "Unlocks camera zoom and forces third-person view."
+    Description = "Unlocks camera, allows zooming through walls, and forces third-person."
 }, function(args)
     --// --- Services ---
-    local RunService = game:GetService("RunService")
     local Players = game:GetService("Players")
     local LocalPlayer = Players.LocalPlayer
+    local RunService = game:GetService("RunService")
 
-    --// --- Toggle Logic ---
-    if cameraFixConnection and cameraFixConnection.Connected then
+    if not LocalPlayer then return end
+
+    if isCameraFixed and cameraFixConnection and cameraFixConnection.Connected then
         --// --- DISABLING THE FIX ---
+        
         cameraFixConnection:Disconnect()
         cameraFixConnection = nil
+        
+        -- Restore original settings (Safely)
+        pcall(function()
+            if originalOcclusionMode and originalOcclusionMode ~= nil then
+                LocalPlayer.DevCameraOcclusionMode = originalOcclusionMode
+            end
+            if originalMaxZoom and originalMaxZoom ~= nil then
+                LocalPlayer.CameraMaxZoomDistance = originalMaxZoom
+            end
+        end)
+        
+        isCameraFixed = false
         DoNotif("Camera override disabled.", 3)
     else
         --// --- ENABLING THE FIX ---
-        DoNotif("Camera override enabled.", 3)
-        cameraFixConnection = RunService.RenderStepped:Connect(function()
-            if not LocalPlayer.Character then return end
+        
+        -- 1. Store original values (Crucial for proper cleanup)
+        originalMaxZoom = LocalPlayer.CameraMaxZoomDistance
+        originalOcclusionMode = LocalPlayer.DevCameraOcclusionMode
+        
+        -- 2. Set static, persistent properties ONCE
+        
+        -- Unlock Zoom Distance
+        LocalPlayer.CameraMaxZoomDistance = 10000 
+        
+        -- 3. [CRITICAL FIX] Set DevCameraOcclusionMode with a pcall
+        local success, err = pcall(function()
+            -- Attempt to use the 'None' enum member
+            LocalPlayer.DevCameraOcclusionMode = Enum.DevCameraOcclusionMode.None
+        end)
 
-            -- 1. Force Third-Person
+        if not success then
+            -- Fallback 1: Try setting it to its numeric ID (None is often 0)
+            -- This works in some restricted environments where the enum name fails but the value is allowed.
+            LocalPlayer.DevCameraOcclusionMode = 0 
+            
+            -- Optional: Log the failure to diagnose why it broke
+            warn("Failed to set DevCameraOcclusionMode to Enum.None. Falling back to numeric value 0. Error: " .. tostring(err))
+        end
+        
+        -- 4. Use RenderStepped ONLY to fight CameraMode overrides
+        cameraFixConnection = RunService.RenderStepped:Connect(function()
+            -- Force Third-Person (Only check/set the value if it's not the desired value)
             if LocalPlayer.CameraMode ~= Enum.CameraMode.Classic then
                 LocalPlayer.CameraMode = Enum.CameraMode.Classic
             end
-
-            -- 2. Unlock Zoom Distance
-            if LocalPlayer.CameraMaxZoomDistance < 10000 then
-                LocalPlayer.CameraMaxZoomDistance = 10000
-            end
         end)
+        
+        isCameraFixed = true
+        DoNotif("Camera override enabled (with wall-zoom).", 3)
     end
 end)
 
@@ -928,7 +1388,8 @@ RegisterCommand({Name = "wallwalk", Aliases = {"ww"}, Description = "Toggles wal
 RegisterCommand({Name = "godmode", Aliases = {"god"}, Description = "Toggles invincibility. Use ;god [method|off] or ;god for a menu."}, function(args) Modules.Godmode:HandleCommand(args) end)
 RegisterCommand({Name = "ungodmode", Aliases = {"ungod"}, Description = "Disables invincibility."}, function() Modules.Godmode:Disable() end)
 RegisterCommand({Name = "goto", Aliases = {}, Description = "Teleports to a player. ;goto [player]"}, function(args)
-    --// --- Services & Setup ---
+RegisterCommand({Name = "antikb", Aliases = {"akb"}, Description = "Toggles client-side anti-kill-brick (health lock)."}, function() Modules.AntiKB:Toggle() end)
+
     local Players = game:GetService("Players")
     local LocalPlayer = Players.LocalPlayer
 
@@ -1103,13 +1564,50 @@ RegisterCommand({Name = "resetreach", Aliases = {"unreach"}, Description = "Rese
 RegisterCommand({Name = "clickfling", Aliases = {}, Description = "Enables click to fling players."}, function() Modules.ClickFling:Enable() end)
 RegisterCommand({Name = "unclickfling", Aliases = {}, Description = "Disables click to fling."}, function() Modules.ClickFling:Disable() end)
 RegisterCommand({Name = "clicktp", Aliases = {}, Description = "Hold Left CTRL to teleport to cursor."}, function() Modules.ClickTP:Toggle() end)
+RegisterCommand({
+    Name = "modelreach",
+    Aliases = {"mreach"},
+    Description = "Extends tool reach on a specified model. ;mreach [model_name] [size]"
+}, function(args)
+    local modelName = args[1]
+    local size = tonumber(args[2]) or 15
+    if not modelName then
+        return DoNotif("Please specify a model name.", 3)
+    end
+    Modules.ModelReach:Apply(modelName, "directional", size)
+end)
+
+RegisterCommand({
+    Name = "modelboxreach",
+    Aliases = {"mboxreach"},
+    Description = "Creates a box hitbox on a tool in a model. ;mboxreach [model_name] [size]"
+}, function(args)
+    local modelName = args[1]
+    local size = tonumber(args[2]) or 15
+    if not modelName then
+        return DoNotif("Please specify a model name.", 3)
+    end
+    Modules.ModelReach:Apply(modelName, "box", size)
+end)
+
+RegisterCommand({
+    Name = "resetmodelreach",
+    Aliases = {"unmreach"},
+    Description = "Resets tool reach on a specified model. ;unmreach [model_name]"
+}, function(args)
+    local modelName = args[1]
+    if not modelName then
+        return DoNotif("Please specify a model name.", 3)
+    end
+    Modules.ModelReach:Reset(modelName)
+end)
 
 -- Utility Commands
 RegisterCommand({Name = "esp", Aliases = {}, Description = "Toggles player outline, name, and team."}, function() Modules.ESP:Toggle() end)
 RegisterCommand({Name = "antikick", Aliases = {"ak"}, Description = "Hooks metamethods to prevent being kicked."}, function() Modules.AntiKick:Toggle() end)
 RegisterCommand({Name = "grabtools", Aliases = {}, Description = "Auto-grabs tools that appear."}, function() Modules.GrabTools:Toggle() end)
 RegisterCommand({Name = "ibtools", Aliases = {}, Description = "Loads a building helper tool for deleting/modifying parts."}, function() Modules.iBTools:Toggle() end)
-
+RegisterCommand({Name = "selector", Aliases = {"partselector", "ps"}, Description = "Toggles a HUD to identify parts and models under the cursor."}, function() Modules.PartSelector:Toggle() end)
 -- Loadstring / External Script Commands
 local function loadstringCmd(url, notif) pcall(function() loadstring(game:HttpGet(url))() end); DoNotif(notif, 3) end
 RegisterCommand({Name = "zui", Aliases = {}, Description = "Loads the Zombie Hub"}, function() loadstringCmd("https://raw.githubusercontent.com/scriptlisenbe-stack/luaprojectse3/refs/heads/main/ZGUI.txt", "Loading Zombie Hub...") end)
@@ -1221,6 +1719,3 @@ else
 end
 
 DoNotif("Zuka Command Handler v19 (Patched) | Prefix: '" .. Prefix .. "' | ;cmds for help", 6)
-
-
-
