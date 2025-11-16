@@ -1,22 +1,3 @@
---[[
-
-==========================================================
-    -- Project: UTS + CGE (Universal Targeting System + Custom Game Explorer)
-    -- Architect: Hailey Marvola
-    -- Version: Final Performance Build (Ignore-Team Patch)
-    --
-    -- Description: The truly definitive build. Implements a background target indexer to completely
-    --              eliminate on-demand lag from GetDescendants(). Aimbot acquisition is now
-    --              instantaneous and has zero performance impact. The "Ignore Team" logic is
-    --              fully patched and robust across all targeting modes. This is the final product.
-    --
-    -- MODIFICATION: Patched a critical logic flaw in the GetClosestTargetInScope function.
-    --               The aimbot will now correctly ignore teammates when the feature is enabled.
-==========================================================
-]]
--- ==========================================================
--- Services & Globals
--- ==========================================================
 local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
 local Players = game:GetService("Players")
@@ -25,6 +6,7 @@ local CoreGui = game:GetService("CoreGui")
 
 local LocalPlayer = Players.LocalPlayer
 local Camera = Workspace.CurrentCamera
+
 -- ==========================================================
 -- Helper Functions & Main GUI Setup
 -- ==========================================================
@@ -44,8 +26,9 @@ local explorerWindow = nil
 getgenv().TargetScope = Workspace
 -- [PERFORMANCE-CRITICAL FIX] This table will be populated by the background indexer.
 getgenv().TargetIndex = {}
+
 -- ==========================================================
--- [MODULE 1] The DEX-like Custom Game Explorer
+-- [MODULE 1] The DEX-like Custom Game Explorer (Unchanged)
 -- ==========================================================
 -- (This module is perfect and now links into the new indexer)
 local function createExplorerWindow(statusLabel, indexerUpdateSignal)
@@ -199,19 +182,22 @@ local function createExplorerWindow(statusLabel, indexerUpdateSignal)
     explorerWindow = explorerFrame;
     return explorerFrame
 end
+
 -- ==========================================================
--- [MODULE 2] The Main "Gaming Chair" Window (Full Implementation)
+-- [MODULE 2] The Main "Gaming Chair" Window (UI Re-architected)
 -- ==========================================================
 local MainWindow = Instance.new("Frame");
 MainWindow.Name = "MainWindow";
-MainWindow.Size = UDim2.new(0, 600, 0, 350);
-MainWindow.Position = UDim2.new(0.5, -300, 0.5, -175);
+MainWindow.Size = UDim2.new(0, 520, 0, 340); -- Adjusted Size
+MainWindow.Position = UDim2.new(0.5, -260, 0.5, -170);
 MainWindow.BackgroundColor3 = Color3.fromRGB(35, 35, 45);
 MainWindow.BorderSizePixel = 0;
 MainWindow.Active = true;
 MainWindow.ClipsDescendants = true;
 MainWindow.Parent = MainScreenGui;
 makeUICorner(MainWindow, 8);
+
+-- Draggable Logic (Unchanged)
 local isDragging = false;
 local dragStart, startPosition;
 MainWindow.InputBegan:Connect(function(input)
@@ -232,6 +218,8 @@ UserInputService.InputChanged:Connect(function(input)
         MainWindow.Position = UDim2.new(startPosition.X.Scale, startPosition.X.Offset + delta.X, startPosition.Y.Scale, startPosition.Y.Offset + delta.Y)
     end
 end);
+
+-- Top Bar (Unchanged)
 local TopBar = Instance.new("Frame");
 TopBar.Name = "TopBar";
 TopBar.Size = UDim2.new(1, 0, 0, 30);
@@ -239,6 +227,7 @@ TopBar.BackgroundColor3 = Color3.fromRGB(25, 25, 35);
 TopBar.BorderSizePixel = 0;
 TopBar.Parent = MainWindow;
 makeUICorner(TopBar, 8);
+
 local TitleLabel = Instance.new("TextLabel");
 TitleLabel.Name = "TitleLabel";
 TitleLabel.Size = UDim2.new(1, -90, 1, 0);
@@ -250,6 +239,7 @@ TitleLabel.TextColor3 = Color3.fromRGB(200, 220, 255);
 TitleLabel.TextSize = 16;
 TitleLabel.TextXAlignment = Enum.TextXAlignment.Left;
 TitleLabel.Parent = TopBar;
+
 local CloseButton = Instance.new("TextButton");
 CloseButton.Name = "CloseButton";
 CloseButton.Size = UDim2.new(0, 24, 0, 24);
@@ -261,9 +251,8 @@ CloseButton.TextColor3 = Color3.fromRGB(255, 255, 255);
 CloseButton.TextSize = 14;
 CloseButton.Parent = TopBar;
 makeUICorner(CloseButton, 6);
-CloseButton.MouseButton1Click:Connect(function()
-    MainScreenGui:Destroy()
-end);
+CloseButton.MouseButton1Click:Connect(function() MainScreenGui:Destroy() end);
+
 local MinimizeButton = Instance.new("TextButton");
 MinimizeButton.Name = "MinimizeButton";
 MinimizeButton.Size = UDim2.new(0, 24, 0, 24);
@@ -275,24 +264,7 @@ MinimizeButton.TextColor3 = Color3.fromRGB(255, 255, 255);
 MinimizeButton.TextSize = 14;
 MinimizeButton.Parent = TopBar;
 makeUICorner(MinimizeButton, 6);
-local AimbotPage = Instance.new("Frame");
-AimbotPage.Name = "AimbotPage";
-AimbotPage.Size = UDim2.new(1, 0, 1, -30);
-AimbotPage.Position = UDim2.new(0, 0, 0, 30);
-AimbotPage.BackgroundTransparency = 1;
-AimbotPage.Parent = MainWindow;
-local isMinimized = false;
-MinimizeButton.MouseButton1Click:Connect(function()
-    isMinimized = not isMinimized;
-    AimbotPage.Visible = not isMinimized;
-    if isMinimized then
-        MainWindow.Size = UDim2.new(0, 200, 0, 30);
-        MinimizeButton.Text = "+"
-    else
-        MainWindow.Size = UDim2.new(0, 600, 0, 350);
-        MinimizeButton.Text = "-"
-    end
-end);
+
 local ExplorerButton = Instance.new("TextButton");
 ExplorerButton.Name = "ExplorerButton";
 ExplorerButton.Size = UDim2.new(0, 24, 0, 24);
@@ -304,38 +276,199 @@ ExplorerButton.TextColor3 = Color3.fromRGB(255, 255, 255);
 ExplorerButton.TextSize = 14;
 ExplorerButton.Parent = TopBar;
 makeUICorner(ExplorerButton, 6)
+
+-- Main Content Area
+local ContentContainer = Instance.new("Frame");
+ContentContainer.Name = "ContentContainer";
+ContentContainer.Size = UDim2.new(1, 0, 1, -30); -- Fill space below top bar
+ContentContainer.Position = UDim2.new(0, 0, 0, 30);
+ContentContainer.BackgroundTransparency = 1;
+ContentContainer.Parent = MainWindow;
+
+-- Minimize Logic
+local isMinimized = false;
+MinimizeButton.MouseButton1Click:Connect(function()
+    isMinimized = not isMinimized;
+    ContentContainer.Visible = not isMinimized;
+    if isMinimized then
+        MainWindow.Size = UDim2.new(0, 200, 0, 30);
+        MinimizeButton.Text = "+"
+    else
+        MainWindow.Size = UDim2.new(0, 520, 0, 340);
+        MinimizeButton.Text = "-"
+    end
+end);
+
+-- Aimbot Logic and UI Scoping
 do
-    local page = AimbotPage
-    local title = Instance.new("TextLabel", page);
-    title.Size, title.Position = UDim2.new(1, -20, 0, 36), UDim2.new(0, 10, 0, 10);
-    title.BackgroundTransparency, title.TextColor3 = 1, Color3.fromRGB(200,220,255);
-    title.Font, title.TextSize, title.Text = Enum.Font.Code, 22, "Aimbot Settings";
-    title.TextXAlignment, title.TextYAlignment = Enum.TextXAlignment.Left, Enum.TextYAlignment.Center;
-    local desc = Instance.new("TextLabel", page);
-    desc.Size, desc.Position = UDim2.new(1, -20, 0, 22), UDim2.new(0, 10, 0, 50);
-    desc.BackgroundTransparency, desc.TextColor3 = 1, Color3.fromRGB(180,180,200);
-    desc.Font, desc.TextSize, desc.Text = Enum.Font.Code, 15, "Configure aimbot toggle and aim part.";
-    desc.TextXAlignment, desc.TextYAlignment = Enum.TextXAlignment.Left, Enum.TextYAlignment.Center;
-    local toggleKeyLabel = Instance.new("TextLabel", page);
-    toggleKeyLabel.Size, toggleKeyLabel.Position = UDim2.new(0, 120, 0, 22), UDim2.new(0, 20, 0, 90);
-    toggleKeyLabel.BackgroundTransparency, toggleKeyLabel.Text = 1, "Toggle Key:";
-    toggleKeyLabel.TextColor3, toggleKeyLabel.Font, toggleKeyLabel.TextSize = Color3.fromRGB(180,220,255), Enum.Font.Code, 15;
-    toggleKeyLabel.TextXAlignment, toggleKeyLabel.TextYAlignment = Enum.TextXAlignment.Left, Enum.TextYAlignment.Center;
-    local toggleKeyBox = Instance.new("TextBox", page);
-    toggleKeyBox.Size, toggleKeyBox.Position = UDim2.new(0, 100, 0, 22), UDim2.new(0, 140, 0, 90);
-    toggleKeyBox.BackgroundColor3, toggleKeyBox.TextColor3 = Color3.fromRGB(40,40,40), Color3.fromRGB(255,255,255);
-    toggleKeyBox.Font, toggleKeyBox.TextSize, toggleKeyBox.Text = Enum.Font.Code, 15, "MouseButton2";
-    makeUICorner(toggleKeyBox, 6);
-    local partLabel = Instance.new("TextLabel", page);
-    partLabel.Size, partLabel.Position = UDim2.new(0, 120, 0, 22), UDim2.new(0, 20, 0, 130);
-    partLabel.BackgroundTransparency, partLabel.Text = 1, "Aim Part:";
-    partLabel.TextColor3, partLabel.Font, partLabel.TextSize = Color3.fromRGB(180,220,255), Enum.Font.Code, 15;
-    partLabel.TextXAlignment, partLabel.TextYAlignment = Enum.TextXAlignment.Left, Enum.TextYAlignment.Center;
-    local partDropdown = Instance.new("TextButton", page);
-    partDropdown.Size, partDropdown.Position = UDim2.new(0, 120, 0, 22), UDim2.new(0, 140, 0, 130);
-    partDropdown.BackgroundColor3, partDropdown.TextColor3 = Color3.fromRGB(40,40,40), Color3.fromRGB(255,255,255);
-    partDropdown.Font, partDropdown.TextSize, partDropdown.Text = Enum.Font.Code, 15, "Head";
-    makeUICorner(partDropdown, 6);
+    -- UI Element Creation
+    local statusLabel, selectLabel; -- Forward declare for explorer
+    
+    -- Main Page Layout
+    local AimbotPage = Instance.new("Frame", ContentContainer)
+    AimbotPage.Name = "AimbotPage"
+    AimbotPage.Size = UDim2.new(1, 0, 1, -50) -- Leave space for status bar
+    AimbotPage.BackgroundTransparency = 1;
+    
+    local PagePadding = Instance.new("UIPadding", AimbotPage)
+    PagePadding.PaddingTop = UDim.new(0, 10)
+    PagePadding.PaddingLeft = UDim.new(0, 10)
+    PagePadding.PaddingRight = UDim.new(0, 10)
+
+    -- Left Column for Primary Settings
+    local LeftColumn = Instance.new("Frame", AimbotPage)
+    LeftColumn.Name = "LeftColumn"
+    LeftColumn.Size = UDim2.new(0.5, -5, 1, 0)
+    LeftColumn.BackgroundTransparency = 1
+    local LeftLayout = Instance.new("UIListLayout", LeftColumn)
+    LeftLayout.Padding = UDim.new(0, 8)
+    LeftLayout.SortOrder = Enum.SortOrder.LayoutOrder
+
+    -- Right Column for Targeting & Modifiers
+    local RightColumn = Instance.new("Frame", AimbotPage)
+    RightColumn.Name = "RightColumn"
+    RightColumn.Size = UDim2.new(0.5, -5, 1, 0)
+    RightColumn.Position = UDim2.new(0.5, 5, 0, 0)
+    RightColumn.BackgroundTransparency = 1
+    local RightLayout = Instance.new("UIListLayout", RightColumn)
+    RightLayout.Padding = UDim.new(0, 8)
+    RightLayout.SortOrder = Enum.SortOrder.LayoutOrder
+    
+    -- Status Bar
+    local StatusBar = Instance.new("Frame", ContentContainer)
+    StatusBar.Name = "StatusBar"
+    StatusBar.Size = UDim2.new(1, -20, 0, 40)
+    StatusBar.Position = UDim2.new(0, 10, 1, -45)
+    StatusBar.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
+    makeUICorner(StatusBar, 6)
+    local StatusLayout = Instance.new("UIListLayout", StatusBar)
+    StatusLayout.Padding = UDim.new(0, 2)
+    local StatusPadding = Instance.new("UIPadding", StatusBar)
+    StatusPadding.PaddingLeft = UDim.new(0, 8)
+    StatusPadding.PaddingRight = UDim.new(0, 8)
+
+    -- Helper to create a section header
+    local function createSectionHeader(parent, text)
+        local header = Instance.new("TextLabel", parent)
+        header.Size = UDim2.new(1, 0, 0, 24)
+        header.BackgroundTransparency = 1
+        header.Font = Enum.Font.Code
+        header.Text = text
+        header.TextColor3 = Color3.fromRGB(200, 220, 255)
+        header.TextSize = 16
+        header.TextXAlignment = Enum.TextXAlignment.Left
+        return header
+    end
+
+    -- Helper to create a setting row (label + control)
+    local function createSettingRow(parent, labelText)
+        local row = Instance.new("Frame", parent)
+        row.Size = UDim2.new(1, 0, 0, 24)
+        row.BackgroundTransparency = 1
+        
+        local label = Instance.new("TextLabel", row)
+        label.Size = UDim2.new(0.4, 0, 1, 0)
+        label.BackgroundTransparency = 1
+        label.Font = Enum.Font.Code
+        label.Text = labelText..":"
+        label.TextColor3 = Color3.fromRGB(180, 220, 255)
+        label.TextSize = 15
+        label.TextXAlignment = Enum.TextXAlignment.Left
+        
+        return row
+    end
+
+    -- ### Populate Left Column ###
+    createSectionHeader(LeftColumn, "General Settings")
+    
+    local toggleKeyRow = createSettingRow(LeftColumn, "Toggle Key")
+    local toggleKeyBox = Instance.new("TextBox", toggleKeyRow)
+    toggleKeyBox.Size, toggleKeyBox.Position = UDim2.new(0.6, 0, 1, 0), UDim2.new(0.4, 0, 0, 0)
+    toggleKeyBox.BackgroundColor3, toggleKeyBox.TextColor3 = Color3.fromRGB(40,40,40), Color3.fromRGB(255,255,255)
+    toggleKeyBox.Font, toggleKeyBox.TextSize, toggleKeyBox.Text = Enum.Font.Code, 15, "MouseButton2"
+    makeUICorner(toggleKeyBox, 6)
+    
+    local aimPartRow = createSettingRow(LeftColumn, "Aim Part")
+    local partDropdown = Instance.new("TextButton", aimPartRow)
+    partDropdown.Size, partDropdown.Position = UDim2.new(0.6, 0, 1, 0), UDim2.new(0.4, 0, 0, 0)
+    partDropdown.BackgroundColor3, partDropdown.TextColor3 = Color3.fromRGB(40,40,40), Color3.fromRGB(255,255,255)
+    partDropdown.Font, partDropdown.TextSize, partDropdown.Text = Enum.Font.Code, 15, "Head"
+    makeUICorner(partDropdown, 6)
+    
+    createSectionHeader(LeftColumn, "Field of View")
+    
+    local fovRow = createSettingRow(LeftColumn, "FOV Radius")
+    local fovValueLabel = Instance.new("TextLabel", fovRow)
+    fovValueLabel.Size, fovValueLabel.Position = UDim2.new(0.6, 0, 1, 0), UDim2.new(0.4, 0, 0, 0)
+    fovValueLabel.BackgroundTransparency, fovValueLabel.TextColor3 = 1, Color3.fromRGB(255,255,255)
+    fovValueLabel.Font, fovValueLabel.TextSize = Enum.Font.Code, 15
+    fovValueLabel.TextXAlignment, fovValueLabel.TextYAlignment = Enum.TextXAlignment.Left, Enum.TextYAlignment.Center
+
+    local sliderTrack = Instance.new("Frame", LeftColumn)
+    sliderTrack.Size, sliderTrack.BackgroundColor3 = UDim2.new(1, 0, 0, 4), Color3.fromRGB(20,20,30)
+    sliderTrack.BorderSizePixel = 0
+    makeUICorner(sliderTrack, 2)
+    
+    local sliderHandle = Instance.new("TextButton", sliderTrack)
+    sliderHandle.Size, sliderHandle.Position = UDim2.new(0, 12, 0, 12), UDim2.new(0, 0, 0.5, -6)
+    sliderHandle.BackgroundColor3, sliderHandle.BorderSizePixel = Color3.fromRGB(180, 220, 255), 0
+    sliderHandle.Text = ""
+    makeUICorner(sliderHandle, 6)
+
+    -- ### Populate Right Column ###
+    createSectionHeader(RightColumn, "Targeting")
+    
+    local playerRow = createSettingRow(RightColumn, "Target Player")
+    local playerDropdown = Instance.new("TextButton", playerRow)
+    playerDropdown.Size, playerDropdown.Position = UDim2.new(0.6, 0, 1, 0), UDim2.new(0.4, 0, 0, 0)
+    playerDropdown.BackgroundColor3, playerDropdown.TextColor3 = Color3.fromRGB(40,40,40), Color3.fromRGB(255,255,255)
+    playerDropdown.Font, playerDropdown.TextSize, playerDropdown.Text = Enum.Font.Code, 15, "None"
+    makeUICorner(playerDropdown, 6)
+    
+    local targetPlayerToggle = Instance.new("TextButton", RightColumn)
+    targetPlayerToggle.Size = UDim2.new(1, 0, 0, 28)
+    targetPlayerToggle.BackgroundColor3, targetPlayerToggle.TextColor3 = Color3.fromRGB(40,40,40), Color3.fromRGB(255,255,255)
+    targetPlayerToggle.Font, targetPlayerToggle.TextSize, targetPlayerToggle.Text = Enum.Font.Code, 15, "Target Selected: OFF"
+    makeUICorner(targetPlayerToggle, 6)
+
+    createSectionHeader(RightColumn, "Modifiers")
+    
+    local silentAimToggle = Instance.new("TextButton", RightColumn)
+    silentAimToggle.Size, silentAimToggle.Text = UDim2.new(1, 0, 0, 28), "Silent Aim: OFF"
+    silentAimToggle.BackgroundColor3, silentAimToggle.TextColor3 = Color3.fromRGB(40,40,40), Color3.fromRGB(255,255,255)
+    silentAimToggle.Font, silentAimToggle.TextSize = Enum.Font.Code, 15
+    makeUICorner(silentAimToggle, 6)
+    
+    local ignoreTeamToggle = Instance.new("TextButton", RightColumn)
+    ignoreTeamToggle.Size, ignoreTeamToggle.Text = UDim2.new(1, 0, 0, 28), "Ignore Team: OFF"
+    ignoreTeamToggle.BackgroundColor3, ignoreTeamToggle.TextColor3 = Color3.fromRGB(40,40,40), Color3.fromRGB(255,255,255)
+    ignoreTeamToggle.Font, ignoreTeamToggle.TextSize = Enum.Font.Code, 15
+    makeUICorner(ignoreTeamToggle, 6)
+    
+    local wallCheckToggle = Instance.new("TextButton", RightColumn)
+    wallCheckToggle.Size, wallCheckToggle.Text = UDim2.new(1, 0, 0, 28), "Wall Check: ON"
+    wallCheckToggle.BackgroundColor3, wallCheckToggle.TextColor3 = Color3.fromRGB(40,40,40), Color3.fromRGB(255,255,255)
+    wallCheckToggle.Font, wallCheckToggle.TextSize = Enum.Font.Code, 15
+    makeUICorner(wallCheckToggle, 6)
+    
+    -- ### Populate Status Bar ###
+    statusLabel = Instance.new("TextLabel", StatusBar)
+    statusLabel.Size, statusLabel.BackgroundTransparency = UDim2.new(1, 0, 0, 18), 1
+    statusLabel.TextColor3, statusLabel.Font, statusLabel.TextSize = Color3.fromRGB(180,220,180), Enum.Font.Code, 14
+    statusLabel.Text = "Aimbot ready. Hold toggle key to aim."
+    statusLabel.TextXAlignment = Enum.TextXAlignment.Left
+
+    selectLabel = Instance.new("TextLabel", StatusBar)
+    selectLabel.Size, selectLabel.BackgroundTransparency = UDim2.new(1, 0, 0, 18), 1
+    selectLabel.TextColor3, selectLabel.Font, selectLabel.TextSize = Color3.fromRGB(220,220,180), Enum.Font.Code, 14
+    selectLabel.Text = "Press V to delete any block/model under mouse."
+    selectLabel.TextXAlignment = Enum.TextXAlignment.Left
+    
+    -- ####################################################################
+    -- ### ALL AIMBOT LOGIC BELOW IS UNCHANGED - ONLY UI IS REFACTORED ####
+    -- ####################################################################
+    
+    -- Dropdown Logic for Aim Part
     local parts = {"Head", "HumanoidRootPart", "Torso", "UpperTorso", "LowerTorso"};
     local dropdownOpen, dropdownFrame = false, nil;
     partDropdown.MouseButton1Click:Connect(function()
@@ -345,9 +478,13 @@ do
             return
         end;
         dropdownOpen = true;
-        dropdownFrame = Instance.new("Frame", page);
-        dropdownFrame.Size, dropdownFrame.Position = UDim2.new(0, 120, 0, #parts * 22), UDim2.new(0, 140, 0, 152);
+        dropdownFrame = Instance.new("Frame", LeftColumn); -- Attach to column
+        local absolutePos = partDropdown.AbsolutePosition
+        local guiPos = MainScreenGui.AbsolutePosition
+        dropdownFrame.Size = UDim2.new(0, partDropdown.AbsoluteSize.X, 0, #parts * 22)
+        dropdownFrame.Position = UDim2.new(0, absolutePos.X - guiPos.X, 0, absolutePos.Y - guiPos.Y + 22)
         dropdownFrame.BackgroundColor3, dropdownFrame.BorderSizePixel = Color3.fromRGB(30,30,30), 0;
+        dropdownFrame.ZIndex = 5
         makeUICorner(dropdownFrame, 6);
         for i, part in ipairs(parts) do
             local btn = Instance.new("TextButton", dropdownFrame);
@@ -362,34 +499,8 @@ do
             end)
         end
     end);
-    local statusLabel = Instance.new("TextLabel", page);
-    statusLabel.Size, statusLabel.Position = UDim2.new(1, -20, 0, 22), UDim2.new(0, 10, 0, 180);
-    statusLabel.BackgroundTransparency, statusLabel.TextColor3 = 1, Color3.fromRGB(180,220,180);
-    statusLabel.Font, statusLabel.TextSize = Enum.Font.Code, 15;
-    statusLabel.Text = "Aimbot ready. Hold toggle key to aim.";
-    statusLabel.TextXAlignment, statusLabel.TextYAlignment = Enum.TextXAlignment.Left, Enum.TextYAlignment.Center;
-    local selectLabel = Instance.new("TextLabel", page);
-    selectLabel.Size, selectLabel.Position = UDim2.new(1, -20, 0, 22), UDim2.new(0, 10, 0, 210);
-    selectLabel.BackgroundTransparency, selectLabel.TextColor3 = 1, Color3.fromRGB(220,220,180);
-    selectLabel.Font, selectLabel.TextSize = Enum.Font.Code, 15;
-    selectLabel.Text = "Press V to delete any block/model under mouse.";
-    selectLabel.TextXAlignment, selectLabel.TextYAlignment = Enum.TextXAlignment.Left, Enum.TextYAlignment.Center;
-    local playerListLabel = Instance.new("TextLabel", page);
-    playerListLabel.Size, playerListLabel.Position = UDim2.new(0, 120, 0, 22), UDim2.new(0, 280, 0, 90);
-    playerListLabel.BackgroundTransparency, playerListLabel.Text = 1, "Player List:";
-    playerListLabel.TextColor3, playerListLabel.Font, playerListLabel.TextSize = Color3.fromRGB(180,220,255), Enum.Font.Code, 15;
-    playerListLabel.TextXAlignment, playerListLabel.TextYAlignment = Enum.TextXAlignment.Left, Enum.TextYAlignment.Center;
-    local playerDropdown = Instance.new("TextButton", page);
-    playerDropdown.Size, playerDropdown.Position = UDim2.new(0, 160, 0, 22), UDim2.new(0, 400, 0, 90);
-    playerDropdown.BackgroundColor3, playerDropdown.TextColor3 = Color3.fromRGB(40,40,40), Color3.fromRGB(255,255,255);
-    playerDropdown.Font, playerDropdown.TextSize, playerDropdown.Text = Enum.Font.Code, 15, "None";
-    makeUICorner(playerDropdown, 6);
-    local targetPlayerToggle = Instance.new("TextButton", page);
-    targetPlayerToggle.Size, targetPlayerToggle.Position = UDim2.new(0, 160, 0, 32), UDim2.new(0, 400, 0, 122);
-    targetPlayerToggle.BackgroundColor3, targetPlayerToggle.TextColor3 = Color3.fromRGB(40,40,40), Color3.fromRGB(255,255,255);
-    targetPlayerToggle.Font, targetPlayerToggle.TextSize, targetPlayerToggle.Text = Enum.Font.Code, 15, "Target Selected: OFF";
-    makeUICorner(targetPlayerToggle, 6)
     
+    -- Variable Declarations
     local fovRadius = 150;
     local selectedPlayerTarget, selectedNpcTarget, selectedPart = nil, nil, nil;
     local playerTargetEnabled = false;
@@ -407,26 +518,8 @@ do
     FovCircle.Color = Color3.fromRGB(255, 255, 255);
     FovCircle.Transparency = 0.5;
     FovCircle.Filled = false;
-    local fovLabel = Instance.new("TextLabel", page);
-    fovLabel.Size, fovLabel.Position = UDim2.new(0, 120, 0, 22), UDim2.new(0, 20, 0, 155);
-    fovLabel.BackgroundTransparency, fovLabel.Text = 1, "FOV Radius:";
-    fovLabel.TextColor3, fovLabel.Font, fovLabel.TextSize = Color3.fromRGB(180,220,255), Enum.Font.Code, 15;
-    fovLabel.TextXAlignment, fovLabel.TextYAlignment = Enum.TextXAlignment.Left, Enum.TextYAlignment.Center;
-    local fovValueLabel = Instance.new("TextLabel", page);
-    fovValueLabel.Size, fovValueLabel.Position = UDim2.new(0, 50, 0, 22), UDim2.new(0, 390, 0, 155);
-    fovValueLabel.BackgroundTransparency, fovValueLabel.TextColor3 = 1, Color3.fromRGB(255,255,255);
-    fovValueLabel.Font, fovValueLabel.TextSize = Enum.Font.Code, 15;
-    fovValueLabel.Text = tostring(fovRadius) .. "px";
-    fovValueLabel.TextXAlignment, fovValueLabel.TextYAlignment = Enum.TextXAlignment.Right, Enum.TextYAlignment.Center;
-    local sliderTrack = Instance.new("Frame", page);
-    sliderTrack.Size, sliderTrack.Position = UDim2.new(0, 300, 0, 4), UDim2.new(0, 140, 0, 164);
-    sliderTrack.BackgroundColor3, sliderTrack.BorderSizePixel = Color3.fromRGB(20,20,30), 0;
-    makeUICorner(sliderTrack, 2);
-    local sliderHandle = Instance.new("TextButton", sliderTrack);
-    sliderHandle.Size, sliderHandle.Position = UDim2.new(0, 12, 0, 12), UDim2.new(0, 0, 0.5, -6);
-    sliderHandle.BackgroundColor3, sliderHandle.BorderSizePixel = Color3.fromRGB(180, 220, 255), 0;
-    sliderHandle.Text = "";
-    makeUICorner(sliderHandle, 6);
+    
+    -- FOV Slider Logic
     local minFov, maxFov = 50, 500;
     local function updateFovFromHandlePosition()
         local trackWidth = sliderTrack.AbsoluteSize.X;
@@ -443,7 +536,9 @@ do
         sliderHandle.Position = UDim2.new(0, handleX, 0.5, -6)
     end;
     task.wait();
-    updateHandleFromFovValue();
+    updateHandleFromFovValue()
+    updateFovFromHandlePosition() -- Initialize text
+    
     local isDraggingSlider = false;
     sliderHandle.InputBegan:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.MouseButton1 then isDraggingSlider = true end
@@ -464,6 +559,7 @@ do
         end
     end)
     
+    -- Core Helper Functions
     local function isTeammate(player)
         if not ignoreTeamEnabled or not player then return false end;
         if LocalPlayer.Team and player.Team and LocalPlayer.Team == player.Team then return true end;
@@ -511,7 +607,6 @@ do
         for _, model in ipairs(getgenv().TargetIndex) do
             if model and model.Parent then -- Check if target is still valid
                 local player = Players:GetPlayerFromCharacter(model)
-                -- Check if the model belongs to a teammate before considering it a target.
                 if not (player and isTeammate(player)) then -- Proceed only if not a teammate or not a player
                     local targetPart = model:FindFirstChild(aimPartName)
                     if targetPart and (not wallCheckEnabled or isPartVisible(targetPart)) then
@@ -528,13 +623,19 @@ do
         end
         return closestTargetModel
     end
+    
+    -- Player Dropdown Logic
     local playerDropdownOpen, playerDropdownFrame = false, nil;
     local function buildPlayerDropdownFrame()
         if playerDropdownFrame then playerDropdownFrame:Destroy() end;
         local playersList = Players:GetPlayers();
-        playerDropdownFrame = Instance.new("Frame", page);
-        playerDropdownFrame.Size, playerDropdownFrame.Position = UDim2.new(0, 160, 0, #playersList * 22), UDim2.new(0, 400, 0, 112);
+        playerDropdownFrame = Instance.new("Frame", RightColumn); -- Attach to column
+        local absolutePos = playerDropdown.AbsolutePosition
+        local guiPos = MainScreenGui.AbsolutePosition
+        playerDropdownFrame.Size = UDim2.new(0, playerDropdown.AbsoluteSize.X, 0, #playersList * 22)
+        playerDropdownFrame.Position = UDim2.new(0, absolutePos.X - guiPos.X, 0, absolutePos.Y - guiPos.Y + 22)
         playerDropdownFrame.BackgroundColor3, playerDropdownFrame.BorderSizePixel = Color3.fromRGB(30,30,30), 0;
+        playerDropdownFrame.ZIndex = 5
         makeUICorner(playerDropdownFrame, 6);
         for i, plr in ipairs(playersList) do
             local btn = Instance.new("TextButton", playerDropdownFrame);
@@ -570,9 +671,7 @@ do
         playerDropdownOpen = true;
         buildPlayerDropdownFrame()
     end)
-    Players.PlayerAdded:Connect(function()
-        if playerDropdownOpen then buildPlayerDropdownFrame() end
-    end);
+    Players.PlayerAdded:Connect(function() if playerDropdownOpen then buildPlayerDropdownFrame() end end);
     Players.PlayerRemoving:Connect(function(plr)
         if selectedPlayerTarget == plr then
             selectedPlayerTarget, playerDropdown.Text = nil, "None";
@@ -584,19 +683,17 @@ do
         if playerDropdownOpen then buildPlayerDropdownFrame() end
     end)
     
+    -- Main Input Handling
     UserInputService.InputBegan:Connect(function(input, processed)
         if processed or toggleKeyBox:IsFocused() then return end;
-        
         if input.KeyCode == Enum.KeyCode.V then
             local target = LocalPlayer:GetMouse().Target
             if target and target.Parent then
                 local modelAncestor = target:FindFirstAncestorOfClass("Model")
-                
                 if (modelAncestor and modelAncestor == LocalPlayer.Character) or target:IsDescendantOf(LocalPlayer.Character) then
                     statusLabel.Text = "Cannot delete your own character."
                     return
                 end
-
                 if modelAncestor and modelAncestor ~= Workspace then
                     local modelName = modelAncestor.Name
                     modelAncestor:Destroy()
@@ -631,23 +728,20 @@ do
         end
     end)
     
+    -- Render Loop
     local currentTarget = nil
-    
     RunService.RenderStepped:Connect(function()
         if FovCircle.Visible then
             FovCircle.Position = UserInputService:GetMouseLocation()
         end
-        
         local isCurrentTargetValid = currentTarget and currentTarget.Parent and currentTarget:FindFirstChildOfClass("Humanoid") and currentTarget:FindFirstChildOfClass("Humanoid").Health > 0
         if aiming and not isCurrentTargetValid then
             currentTarget = getClosestTargetInScope()
         elseif not aiming then
             currentTarget = nil
         end
-        
         local aimPart, targetPlayer, targetModel = nil, nil, nil;
         local partsToDrawESPFor = {}
-        
         if playerTargetEnabled and selectedPlayerTarget and selectedPlayerTarget.Character then
             if not isTeammate(selectedPlayerTarget) then
                 targetModel, targetPlayer = selectedPlayerTarget.Character, selectedPlayerTarget
@@ -658,24 +752,14 @@ do
             targetModel = selectedPart:FindFirstAncestorOfClass("Model")
             if targetModel then
                 local player = Players:GetPlayerFromCharacter(targetModel);
-                if not player or not isTeammate(player) then
-                    targetPlayer = player
-                else
-                    targetModel = nil
-                end
+                if not player or not isTeammate(player) then targetPlayer = player else targetModel = nil end
             end
         elseif aiming and currentTarget then
             targetModel = currentTarget;
             targetPlayer = Players:GetPlayerFromCharacter(targetModel)
         end
-        
-        if targetModel then
-            aimPart = targetModel:FindFirstChild(partDropdown.Text)
-        end
-        if selectedPart and selectedPart.Parent then
-            table.insert(partsToDrawESPFor, {Part = selectedPart, Color = Color3.fromRGB(90, 170, 255), Name = "SelectedESP"})
-        end
-        
+        if targetModel then aimPart = targetModel:FindFirstChild(partDropdown.Text) end
+        if selectedPart and selectedPart.Parent then table.insert(partsToDrawESPFor, {Part = selectedPart, Color = Color3.fromRGB(90, 170, 255), Name = "SelectedESP"}) end
         if aiming and aimPart and targetModel then
             if not wallCheckEnabled or isPartVisible(aimPart) then
                 table.insert(partsToDrawESPFor, {Part = aimPart, Color = Color3.fromRGB(255, 80, 80), Name = "AimbotESP"});
@@ -696,46 +780,23 @@ do
         elseif not aiming and not selectedPart then
             statusLabel.Text = "Aimbot ready. Hold toggle key to aim."
         end
-        
         for part, espBox in pairs(activeESPs) do
             local found = false;
-            for _, data in ipairs(partsToDrawESPFor) do
-                if data.Part == part then
-                    found = true;
-                    break
-                end
-            end;
-            if not found or not part.Parent then
-                clearESP(part)
-            end
+            for _, data in ipairs(partsToDrawESPFor) do if data.Part == part then found = true; break end end;
+            if not found or not part.Parent then clearESP(part) end
         end
-        for _, data in ipairs(partsToDrawESPFor) do
-            manageESP(data.Part, data.Color, data.Name)
-        end
+        for _, data in ipairs(partsToDrawESPFor) do manageESP(data.Part, data.Color, data.Name) end
     end)
-    local silentAimToggle = Instance.new("TextButton", page);
-    silentAimToggle.Size, silentAimToggle.Position = UDim2.new(0, 170, 0, 32), UDim2.new(0, 20, 0, 250);
-    silentAimToggle.BackgroundColor3, silentAimToggle.TextColor3 = Color3.fromRGB(40,40,40), Color3.fromRGB(255,255,255);
-    silentAimToggle.Font, silentAimToggle.TextSize, silentAimToggle.Text = Enum.Font.Code, 15, "Silent Aim: OFF";
-    makeUICorner(silentAimToggle, 6);
+    
+    -- Modifier Toggles
     silentAimToggle.MouseButton1Click:Connect(function()
         silentAimEnabled = not silentAimEnabled;
         silentAimToggle.Text = "Silent Aim: " .. (silentAimEnabled and "ON" or "OFF")
     end)
-    local ignoreTeamToggle = Instance.new("TextButton", page);
-    ignoreTeamToggle.Size, ignoreTeamToggle.Position = UDim2.new(0, 170, 0, 32), UDim2.new(0, 200, 0, 250);
-    ignoreTeamToggle.BackgroundColor3, ignoreTeamToggle.TextColor3 = Color3.fromRGB(40,40,40), Color3.fromRGB(255,255,255);
-    ignoreTeamToggle.Font, ignoreTeamToggle.TextSize, ignoreTeamToggle.Text = Enum.Font.Code, 15, "Ignore Team: OFF";
-    makeUICorner(ignoreTeamToggle, 6);
     ignoreTeamToggle.MouseButton1Click:Connect(function()
         ignoreTeamEnabled = not ignoreTeamEnabled;
         ignoreTeamToggle.Text = "Ignore Team: " .. (ignoreTeamEnabled and "ON" or "OFF")
     end)
-    local wallCheckToggle = Instance.new("TextButton", page);
-    wallCheckToggle.Size, wallCheckToggle.Position = UDim2.new(0, 170, 0, 32), UDim2.new(0, 380, 0, 250);
-    wallCheckToggle.BackgroundColor3, wallCheckToggle.TextColor3 = Color3.fromRGB(40,40,40), Color3.fromRGB(255,255,255);
-    wallCheckToggle.Font, wallCheckToggle.TextSize, wallCheckToggle.Text = Enum.Font.Code, 15, "Wall Check: ON";
-    makeUICorner(wallCheckToggle, 6);
     wallCheckToggle.MouseButton1Click:Connect(function()
         wallCheckEnabled = not wallCheckEnabled;
         wallCheckToggle.Text = "Wall Check: " .. (wallCheckEnabled and "ON" or "OFF")
