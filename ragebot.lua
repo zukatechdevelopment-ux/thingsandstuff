@@ -31,66 +31,52 @@ local mainConnection, lastAttackTime = nil, 0
 local equippedTool, playerList = nil, {}
 local currentTargetIndex = 1
 local reachSelectionBox = nil
-local characterConnections = {} -- To manage character event connections safely
+local characterConnections = {}
+local isMinimized = false -- [NEW] State for minimize feature
+local originalMainWindowSize = UDim2.new(0, 600, 0, 280) -- Store original size
 
 -- ==========================================================
--- PHASE 1: CREATE ALL UI INSTANCES (NO LOGIC)
+-- PHASE 1: CREATE ALL UI INSTANCES
 -- ==========================================================
 local ScreenGui = Instance.new("ScreenGui", PlayerGui)
-ScreenGui.Name = "RageBotMenuGUI_Definitive"
+ScreenGui.Name = "RageBotMenuGUI_Complete"
 ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Global
 ScreenGui.ResetOnSpawn = false
 
 local function makeUICorner(e, r) local c=Instance.new("UICorner");c.CornerRadius=UDim.new(0,r or Theme.CornerRadius);c.Parent=e end
 
 local MainWindow = Instance.new("Frame", ScreenGui)
-MainWindow.Name = "MainWindow"; MainWindow.Size = UDim2.new(0, 600, 0, 280); MainWindow.Position = UDim2.new(0.5, -300, 0.5, -140); MainWindow.BackgroundColor3 = Theme.Background; MainWindow.Active = true; makeUICorner(MainWindow)
+MainWindow.Name = "MainWindow"; MainWindow.Size = originalMainWindowSize; MainWindow.Position = UDim2.new(0.5, -300, 0.5, -140); MainWindow.BackgroundColor3 = Theme.Background; MainWindow.Active = true; makeUICorner(MainWindow)
 
 local TopBar = Instance.new("Frame", MainWindow)
 TopBar.Name = "TopBar"; TopBar.Size=UDim2.new(1,0,0,30); TopBar.BackgroundColor3=Theme.Primary; do local c=Instance.new("UICorner",TopBar);c.CornerRadius=UDim.new(0,Theme.CornerRadius)end
 
 local TitleLabel = Instance.new("TextLabel", TopBar)
-TitleLabel.Name="TitleLabel";TitleLabel.Size=UDim2.new(1,0,1,0);TitleLabel.Position=UDim2.new(0,10,0,0);TitleLabel.BackgroundTransparency=1;TitleLabel.Font=Theme.Font;TitleLabel.Text="Rage Bot (Definitive)";TitleLabel.TextColor3=Theme.Text;TitleLabel.TextSize=16;TitleLabel.TextXAlignment=Enum.TextXAlignment.Left
+TitleLabel.Name="TitleLabel";TitleLabel.Size=UDim2.new(1,-40,1,0);TitleLabel.Position=UDim2.new(0,10,0,0);TitleLabel.BackgroundTransparency=1;TitleLabel.Font=Theme.Font;TitleLabel.Text="Rage Bot (Complete)";TitleLabel.TextColor3=Theme.Text;TitleLabel.TextSize=16;TitleLabel.TextXAlignment=Enum.TextXAlignment.Left
+
+-- [NEW] Minimize Button created
+local MinimizeButton = Instance.new("TextButton", TopBar)
+MinimizeButton.Name = "MinimizeButton"; MinimizeButton.Size = UDim2.new(0,24,0,24); MinimizeButton.Position=UDim2.new(1,-28,0.5,-12); MinimizeButton.BackgroundColor3=Color3.fromRGB(80,80,100); MinimizeButton.Font=Theme.Font; MinimizeButton.TextColor3=Color3.new(1,1,1); MinimizeButton.Text="-"; MinimizeButton.TextSize=14; makeUICorner(MinimizeButton,6)
 
 local ContentPage = Instance.new("Frame", MainWindow)
 ContentPage.Name="ContentPage";ContentPage.Size=UDim2.new(1,0,1,-30);ContentPage.Position=UDim2.new(0,0,0,30);ContentPage.BackgroundTransparency=1
-
-local LeftColumn = Instance.new("Frame",ContentPage); LeftColumn.Name="LeftColumn";LeftColumn.Size=UDim2.new(0.5,-10,1,-20);LeftColumn.Position=UDim2.new(0,10,0,10);LeftColumn.BackgroundTransparency=1;
-local LeftLayout = Instance.new("UIListLayout",LeftColumn);LeftLayout.Padding=UDim.new(0,10);LeftLayout.SortOrder=Enum.SortOrder.LayoutOrder
-
-local RightColumn = Instance.new("Frame",ContentPage); RightColumn.Name="RightColumn";RightColumn.Size=UDim2.new(0.5,-10,1,-20);RightColumn.Position=UDim2.new(0.5,0,0,10);RightColumn.BackgroundTransparency=1;
-local RightLayout = Instance.new("UIListLayout",RightColumn);RightLayout.Padding=UDim.new(0,10);RightLayout.SortOrder=Enum.SortOrder.LayoutOrder
-
--- ## Left Column Elements ##
-local playerSelectorContainer = Instance.new("Frame", LeftColumn)
-playerSelectorContainer.Size=UDim2.new(1,0,0,64);playerSelectorContainer.BackgroundTransparency=1;playerSelectorContainer.LayoutOrder=1
-local playerSelectorLabel = Instance.new("TextLabel", playerSelectorContainer)
-playerSelectorLabel.Size=UDim2.new(1,0,0,30);playerSelectorLabel.BackgroundTransparency=1;playerSelectorLabel.Text="Target Player:";playerSelectorLabel.TextColor3=Theme.TextSecondary;playerSelectorLabel.Font=Theme.Font;playerSelectorLabel.TextSize=15;playerSelectorLabel.TextXAlignment=Enum.TextXAlignment.Left
-local playerDropdownButton = Instance.new("TextButton", playerSelectorContainer)
-playerDropdownButton.Size=UDim2.new(0.6,-5,0,28);playerDropdownButton.Position=UDim2.new(0,0,0,30);playerDropdownButton.BackgroundColor3=Theme.Interactive;playerDropdownButton.TextColor3=Theme.Text;playerDropdownButton.Font=Theme.Font;playerDropdownButton.TextSize=15;playerDropdownButton.Text="Select Player";makeUICorner(playerDropdownButton,6)
-local cycleToggleButton = Instance.new("TextButton", playerSelectorContainer)
-cycleToggleButton.Size=UDim2.new(0.4,0,0,28);cycleToggleButton.Position=UDim2.new(0.6,5,0,30);cycleToggleButton.BackgroundColor3=Theme.Interactive;cycleToggleButton.TextColor3=Theme.Text;cycleToggleButton.Font=Theme.Font;cycleToggleButton.TextSize=16;makeUICorner(cycleToggleButton,6)
-
-local rageBotToggleContainer = Instance.new("Frame", LeftColumn); rageBotToggleContainer.LayoutOrder=2;
-local rageBotToggle = Instance.new("TextButton", rageBotToggleContainer)
-local autoAttackToggleContainer = Instance.new("Frame", LeftColumn); autoAttackToggleContainer.LayoutOrder=3;
-local autoAttackToggle = Instance.new("TextButton", autoAttackToggleContainer)
-local cpsInputContainer = Instance.new("Frame", LeftColumn); cpsInputContainer.LayoutOrder=4;
-local cpsInput = Instance.new("TextBox", cpsInputContainer)
-local distanceInputContainer = Instance.new("Frame", LeftColumn); distanceInputContainer.LayoutOrder=5;
-local distanceInput = Instance.new("TextBox", distanceInputContainer)
-
--- ## Right Column Elements ##
-local rightTitle = Instance.new("TextLabel",RightColumn);rightTitle.Size=UDim2.new(1,0,0,20);rightTitle.BackgroundTransparency=1;rightTitle.Font=Theme.Font;rightTitle.TextColor3=Theme.Accent;rightTitle.TextSize=18;rightTitle.Text="BoxReach Module";rightTitle.LayoutOrder=0
-local boxReachToggleContainer = Instance.new("Frame", RightColumn); boxReachToggleContainer.LayoutOrder=1;
-local boxReachToggle = Instance.new("TextButton", boxReachToggleContainer)
-local sizeInputContainer = Instance.new("Frame", RightColumn); sizeInputContainer.LayoutOrder=2;
-local sizeInput = Instance.new("TextBox", sizeInputContainer)
-local partsFrame = Instance.new("Frame", RightColumn); partsFrame.LayoutOrder=3;
-partsFrame.Size = UDim2.new(1, 0, 0, 120); partsFrame.BackgroundTransparency = 1
-local partsLabel = Instance.new("TextLabel", partsFrame); partsLabel.Size=UDim2.new(1,0,0,20);partsLabel.BackgroundTransparency=1;partsLabel.Font=Theme.Font;partsLabel.TextColor3=Theme.TextSecondary;partsLabel.Text="Tool Parts:"
-local partsScroll = Instance.new("ScrollingFrame", partsFrame); partsScroll.Size = UDim2.new(1, 0, 1, -20); partsScroll.Position = UDim2.new(0, 0, 0, 20); partsScroll.BackgroundColor3 = Theme.Primary; partsScroll.BorderSizePixel = 0
-local partsLayout = Instance.new("UIListLayout", partsScroll); partsLayout.Padding = UDim.new(0, 5)
+local LeftColumn=Instance.new("Frame",ContentPage);LeftColumn.Name="LeftColumn";LeftColumn.Size=UDim2.new(0.5,-10,1,-20);LeftColumn.Position=UDim2.new(0,10,0,10);LeftColumn.BackgroundTransparency=1;local LeftLayout=Instance.new("UIListLayout",LeftColumn);LeftLayout.Padding=UDim.new(0,10);LeftLayout.SortOrder=Enum.SortOrder.LayoutOrder
+local RightColumn=Instance.new("Frame",ContentPage);RightColumn.Name="RightColumn";RightColumn.Size=UDim2.new(0.5,-10,1,-20);RightColumn.Position=UDim2.new(0.5,0,0,10);RightColumn.BackgroundTransparency=1;local RightLayout=Instance.new("UIListLayout",RightColumn);RightLayout.Padding=UDim.new(0,10);RightLayout.SortOrder=Enum.SortOrder.LayoutOrder
+local playerSelectorContainer=Instance.new("Frame",LeftColumn);playerSelectorContainer.Size=UDim2.new(1,0,0,64);playerSelectorContainer.BackgroundTransparency=1;playerSelectorContainer.LayoutOrder=1
+local playerSelectorLabel=Instance.new("TextLabel",playerSelectorContainer);playerSelectorLabel.Size=UDim2.new(1,0,0,30);playerSelectorLabel.BackgroundTransparency=1;playerSelectorLabel.Text="Target Player:";playerSelectorLabel.TextColor3=Theme.TextSecondary;playerSelectorLabel.Font=Theme.Font;playerSelectorLabel.TextSize=15;playerSelectorLabel.TextXAlignment=Enum.TextXAlignment.Left
+local playerDropdownButton=Instance.new("TextButton",playerSelectorContainer);playerDropdownButton.Size=UDim2.new(0.6,-5,0,28);playerDropdownButton.Position=UDim2.new(0,0,0,30);playerDropdownButton.BackgroundColor3=Theme.Interactive;playerDropdownButton.TextColor3=Theme.Text;playerDropdownButton.Font=Theme.Font;playerDropdownButton.TextSize=15;playerDropdownButton.Text="Select Player";makeUICorner(playerDropdownButton,6)
+local cycleToggleButton=Instance.new("TextButton",playerSelectorContainer);cycleToggleButton.Size=UDim2.new(0.4,0,0,28);cycleToggleButton.Position=UDim2.new(0.6,5,0,30);cycleToggleButton.BackgroundColor3=Theme.Interactive;cycleToggleButton.TextColor3=Theme.Text;cycleToggleButton.Font=Theme.Font;cycleToggleButton.TextSize=16;makeUICorner(cycleToggleButton,6)
+local rageBotToggleContainer=Instance.new("Frame",LeftColumn);rageBotToggleContainer.LayoutOrder=2;local rageBotToggle=Instance.new("TextButton",rageBotToggleContainer)
+local autoAttackToggleContainer=Instance.new("Frame",LeftColumn);autoAttackToggleContainer.LayoutOrder=3;local autoAttackToggle=Instance.new("TextButton",autoAttackToggleContainer)
+local cpsInputContainer=Instance.new("Frame",LeftColumn);cpsInputContainer.LayoutOrder=4;local cpsInput=Instance.new("TextBox",cpsInputContainer)
+local distanceInputContainer=Instance.new("Frame",LeftColumn);distanceInputContainer.LayoutOrder=5;local distanceInput=Instance.new("TextBox",distanceInputContainer)
+local rightTitle=Instance.new("TextLabel",RightColumn);rightTitle.Size=UDim2.new(1,0,0,20);rightTitle.BackgroundTransparency=1;rightTitle.Font=Theme.Font;rightTitle.TextColor3=Theme.Accent;rightTitle.TextSize=18;rightTitle.Text="BoxReach Module";rightTitle.LayoutOrder=0
+local boxReachToggleContainer=Instance.new("Frame",RightColumn);boxReachToggleContainer.LayoutOrder=1;local boxReachToggle=Instance.new("TextButton",boxReachToggleContainer)
+local sizeInputContainer=Instance.new("Frame",RightColumn);sizeInputContainer.LayoutOrder=2;local sizeInput=Instance.new("TextBox",sizeInputContainer)
+local partsFrame=Instance.new("Frame",RightColumn);partsFrame.LayoutOrder=3;partsFrame.Size=UDim2.new(1,0,0,120);partsFrame.BackgroundTransparency=1
+local partsLabel=Instance.new("TextLabel",partsFrame);partsLabel.Size=UDim2.new(1,0,0,20);partsLabel.BackgroundTransparency=1;partsLabel.Font=Theme.Font;partsLabel.TextColor3=Theme.TextSecondary;partsLabel.Text="Tool Parts:"
+local partsScroll=Instance.new("ScrollingFrame",partsFrame);partsScroll.Size=UDim2.new(1,0,1,-20);partsScroll.Position=UDim2.new(0,0,0,20);partsScroll.BackgroundColor3=Theme.Primary;partsScroll.BorderSizePixel=0
+local partsLayout=Instance.new("UIListLayout",partsScroll);partsLayout.Padding=UDim.new(0,5)
 
 -- ==========================================================
 -- PHASE 2: DEFINE ALL FUNCTIONS
@@ -107,14 +93,25 @@ function createInput(textBox, container, label, default, cb) container.Size=UDim
 -- ==========================================================
 -- PHASE 3: CONNECT ALL LOGIC TO UI
 -- ==========================================================
--- ## Draggable Logic ##
+-- ## Draggable & Minimize Logic ##
 do local iS=false;local dS,sP;TopBar.InputBegan:Connect(function(i)if i.UserInputType==Enum.UserInputType.MouseButton1 or i.UserInputType==Enum.UserInputType.Touch then iS=true;dS=i.Position;sP=MainWindow.Position;i.Changed:Connect(function()if i.UserInputState==Enum.UserInputState.End then iS=false end end)end end);UserInputService.InputChanged:Connect(function(i)if(i.UserInputType==Enum.UserInputType.MouseMovement or i.UserInputType==Enum.UserInputType.Touch)and iS then local d=i.Position-dS;MainWindow.Position=UDim2.new(sP.X.Scale,sP.X.Offset+d.X,sP.Y.Scale,sP.Y.Offset+d.Y)end end)end
+-- [NEW] Minimize button logic connected here
+MinimizeButton.MouseButton1Click:Connect(function()
+    isMinimized = not isMinimized
+    ContentPage.Visible = not isMinimized
+    if isMinimized then
+        MainWindow.Size = UDim2.new(0, 200, 0, 30)
+        MinimizeButton.Text = "+"
+    else
+        MainWindow.Size = originalMainWindowSize
+        MinimizeButton.Text = "-"
+    end
+end)
 
 -- ## Left Column Logic ##
 local cycleState = Settings.AutoCycle; cycleToggleButton.Text = "Cycle: " .. (cycleState and "ON" or "OFF")
 cycleToggleButton.MouseButton1Click:Connect(function()cycleState = not cycleState;Settings.AutoCycle = cycleState;cycleToggleButton.Text = "Cycle: " .. (cycleState and "ON" or "OFF")end)
 local function refreshPlayerList()playerList={};for _,p in ipairs(Players:GetPlayers())do if p~=LocalPlayer then table.insert(playerList,p)end end;if #playerList>0 then currentTargetIndex=math.clamp(currentTargetIndex,1,#playerList);Settings.Target=playerList[currentTargetIndex];playerDropdownButton.Text=Settings.Target.Name else Settings.Target=nil;playerDropdownButton.Text="No Players"end end;playerDropdownButton.MouseButton1Click:Connect(function()if #playerList==0 then return end;currentTargetIndex=(currentTargetIndex%#playerList)+1;Settings.Target=playerList[currentTargetIndex];playerDropdownButton.Text=Settings.Target.Name end);task.spawn(function()while true do task.wait(3);if Settings.AutoCycle and Settings.Enabled and #playerList>1 then currentTargetIndex=(currentTargetIndex%#playerList)+1;Settings.Target=playerList[currentTargetIndex];playerDropdownButton.Text=Settings.Target.Name end end end);refreshPlayerList();Players.PlayerAdded:Connect(refreshPlayerList);Players.PlayerRemoving:Connect(refreshPlayerList)
-
 createToggle(rageBotToggle, rageBotToggleContainer, "Rage Bot", Settings.Enabled, function(s) Settings.Enabled=s;if s then startBot() else stopBot() end end)
 createToggle(autoAttackToggle, autoAttackToggleContainer, "Auto Attack", Settings.AutoAttack, function(s) Settings.AutoAttack=s end)
 createInput(cpsInput, cpsInputContainer, "CPS", Settings.AttackCPS, function(v) if v and tonumber(v) and tonumber(v)>0 and tonumber(v)<=30 then Settings.AttackCPS=tonumber(v) end;return Settings.AttackCPS end)
